@@ -11,6 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(Drogon REQUIRED)
 find_package(GTest REQUIRED)
 find_package(jwt-cpp REQUIRED)
+find_package(argon2 REQUIRED)
 
 set(SOURCES
     src/main.cpp
@@ -24,6 +25,7 @@ set(SOURCES
     src/repositories/UserRepository.cpp
     
     src/services/JwtService.cpp
+    src/services/AuthService.cpp
 )
 
 # set(HEADERS
@@ -44,4 +46,5 @@ target_link_libraries(${PROJECT_NAME_SANITIZED}
         Drogon::Drogon
         GTest::gtest
         jwt-cpp::jwt-cpp
+        argon2::argon2
 )

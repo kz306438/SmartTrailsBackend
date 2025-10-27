@@ -20,6 +20,10 @@
         "issuer": "SmartTrails",
         "expiration": 3600
       }
+    },
+    {
+      "name": "services::AuthService",
+      "dependencies": []
     }
   ],
   "db_clients": [

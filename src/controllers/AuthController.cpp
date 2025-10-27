@@ -2,41 +2,86 @@
 
 #include <drogon/drogon.h>
 
+#include "services/AuthService.h"
+
 using namespace drogon;
 
-auto AuthController::registerUser(const HttpRequestPtr&                         req,
-                                  std::function<void(const HttpResponsePtr&)>&& callback) -> void
+namespace controllers
 {
-    auto        json = req->getJsonObject();
-    Json::Value resp;
-    if (!json || !(*json).isMember("email") || !(*json).isMember("password"))
+
+    void AuthController::registerUser(const HttpRequestPtr&                         req,
+                                      std::function<void(const HttpResponsePtr&)>&& callback)
     {
-        resp["error"] = "Missing email or password";
-        auto res      = HttpResponse::newHttpJsonResponse(resp);
-        res->setStatusCode(k400BadRequest);
-        return callback(res);
+        auto json = req->getJsonObject();
+        if (!json)
+        {
+            auto resp = HttpResponse::newHttpJsonResponse({{"error", "Invalid JSON"}});
+            resp->setStatusCode(k400BadRequest);
+            return callback(resp);
+        }
+
+        auto username = (*json)["username"].asString();
+        auto email    = (*json)["email"].asString();
+        auto password = (*json)["password"].asString();
+
+        if (username.empty() || email.empty() || password.empty())
+        {
+            auto resp = HttpResponse::newHttpJsonResponse({{"error", "Missing fields"}});
+            resp->setStatusCode(k400BadRequest);
+            return callback(resp);
+        }
+
+        auto authService = drogon::app().getPlugin<services::AuthService>();
+        auto token       = authService->registerUser(username, email, password);
+        if (!token)
+        {
+            auto resp = HttpResponse::newHttpJsonResponse({{"error", "Registration failed"}});
+            resp->setStatusCode(k400BadRequest);
+            return callback(resp);
+        }
+
+        Json::Value respJson;
+        respJson["token"] = *token;
+        auto resp         = HttpResponse::newHttpJsonResponse(respJson);
+        resp->setStatusCode(k200OK);
+        callback(resp);
     }
 
-    resp["message"] = "User registration endpoint works!";
-    auto res        = HttpResponse::newHttpJsonResponse(resp);
-    callback(res);
-}
-
-auto AuthController::loginUser(const HttpRequestPtr&                         req,
-                               std::function<void(const HttpResponsePtr&)>&& callback) -> void
-{
-    auto        json = req->getJsonObject();
-    Json::Value resp;
-    if (!json || !(*json).isMember("email") || !(*json).isMember("password"))
+    void AuthController::loginUser(const HttpRequestPtr&                         req,
+                                   std::function<void(const HttpResponsePtr&)>&& callback)
     {
-        resp["error"] = "Missing email or password";
-        auto res      = HttpResponse::newHttpJsonResponse(resp);
-        res->setStatusCode(k400BadRequest);
-        return callback(res);
+        auto json = req->getJsonObject();
+        if (!json)
+        {
+            auto resp = HttpResponse::newHttpJsonResponse({{"error", "Invalid JSON"}});
+            resp->setStatusCode(k400BadRequest);
+            return callback(resp);
+        }
+
+        auto email    = (*json)["email"].asString();
+        auto password = (*json)["password"].asString();
+
+        if (email.empty() || password.empty())
+        {
+            auto resp = HttpResponse::newHttpJsonResponse({{"error", "Missing fields"}});
+            resp->setStatusCode(k400BadRequest);
+            return callback(resp);
+        }
+
+        auto authService = drogon::app().getPlugin<services::AuthService>();
+        auto token       = authService->loginUser(email, password);
+        if (!token)
+        {
+            auto resp = HttpResponse::newHttpJsonResponse({{"error", "Invalid credentials"}});
+            resp->setStatusCode(k401Unauthorized);
+            return callback(resp);
+        }
+
+        Json::Value respJson;
+        respJson["token"] = *token;
+        auto resp         = HttpResponse::newHttpJsonResponse(respJson);
+        resp->setStatusCode(k200OK);
+        callback(resp);
     }
 
-    // пока просто заглушка
-    resp["message"] = "Login endpoint works!";
-    auto res        = HttpResponse::newHttpJsonResponse(resp);
-    callback(res);
-}
+}  // namespace controllers

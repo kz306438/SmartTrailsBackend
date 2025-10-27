@@ -7,10 +7,9 @@ namespace repositories
 
     UserRepository::UserRepository(DbClientPtr dbClient) : dbClient_(std::move(dbClient)) {}
 
-    auto
-    UserRepository::createUser(const std::string& username, const std::string& email,
-                               const std::string& passwordHash,
-                               const std::string& role = "user") -> std::optional<models::Users>
+    auto UserRepository::createUser(const std::string& username, const std::string& email,
+                                    const std::string& passwordHash,
+                                    const std::string& role) -> std::optional<models::Users>
     {
         try
         {
@@ -48,7 +47,7 @@ namespace repositories
         }
     }
 
-    auto UserRepository::getUserByEmail(std::string& email) -> std::optional<models::Users>
+    auto UserRepository::getUserByEmail(const std::string& email) -> std::optional<models::Users>
     {
         try
         {
@@ -62,7 +61,8 @@ namespace repositories
         }
     }
 
-    auto UserRepository::getUserByUsername(std::string& username) -> std::optional<models::Users>
+    auto
+    UserRepository::getUserByUsername(const std::string& username) -> std::optional<models::Users>
     {
         try
         {

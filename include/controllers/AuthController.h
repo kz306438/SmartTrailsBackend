@@ -1,18 +1,21 @@
 #pragma once
 #include <drogon/HttpController.h>
 
-using namespace drogon;
-
-class AuthController : public drogon::HttpController<AuthController>
+namespace controllers
 {
-  public:
-    METHOD_LIST_BEGIN
-    ADD_METHOD_TO(AuthController::registerUser, "/register", Post);
-    ADD_METHOD_TO(AuthController::loginUser, "/login", Post);
-    METHOD_LIST_END
 
-    auto registerUser(const HttpRequestPtr&                         req,
-                      std::function<void(const HttpResponsePtr&)>&& callback) -> void;
-    auto loginUser(const HttpRequestPtr&                         req,
-                   std::function<void(const HttpResponsePtr&)>&& callback) -> void;
-};
+    class AuthController : public drogon::HttpController<AuthController>
+    {
+      public:
+        METHOD_LIST_BEGIN
+        ADD_METHOD_TO(AuthController::registerUser, "/register", drogon::Post);
+        ADD_METHOD_TO(AuthController::loginUser, "/login", drogon::Post);
+        METHOD_LIST_END
+
+        auto registerUser(const drogon::HttpRequestPtr&                         req,
+                          std::function<void(const drogon::HttpResponsePtr&)>&& callback) -> void;
+        auto loginUser(const drogon::HttpRequestPtr&                         req,
+                       std::function<void(const drogon::HttpResponsePtr&)>&& callback) -> void;
+    };
+
+}  // namespace controllers

@@ -22,8 +22,11 @@ namespace repositories
                         const std::string& role = "user") -> std::optional<models::Users>;
 
         [[nodiscard]] auto getUserById(int userId) -> std::optional<models::Users>;
-        [[nodiscard]] auto getUserByEmail(std::string& email) -> std::optional<models::Users>;
-        [[nodiscard]] auto getUserByUsername(std::string& username) -> std::optional<models::Users>;
+
+        [[nodiscard]] auto getUserByEmail(const std::string& email) -> std::optional<models::Users>;
+
+        [[nodiscard]] auto
+        getUserByUsername(const std::string& username) -> std::optional<models::Users>;
 
         auto updateUser(const models::Users& user) -> bool;
         auto deleteUser(int userId) -> bool;

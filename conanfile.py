@@ -9,7 +9,8 @@ class MyProjectConan(ConanFile):
     requires = (
         "drogon/1.9.7",
         "gtest/1.16.0",
-        "jwt-cpp/0.4.0"
+        "jwt-cpp/0.4.0",
+        "argon2/20190702"
     )
     exports_sources = "CMakeLists.txt", "src/*", "tests/*"
 
