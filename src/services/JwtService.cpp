@@ -5,10 +5,10 @@
 #include <chrono>
 #include <iostream>
 
-using namespace std::chrono;
-
 namespace services
 {
+
+    using namespace std::chrono;
 
     auto JwtService::initAndStart(const Json::Value& config) -> void
     {

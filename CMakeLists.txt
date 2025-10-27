@@ -20,6 +20,8 @@ set(SOURCES
     src/filters/AdminFilter.cpp
 
     src/models/Users.cpp
+
+    src/repositories/UserRepository.cpp
     
     src/services/JwtService.cpp
 )

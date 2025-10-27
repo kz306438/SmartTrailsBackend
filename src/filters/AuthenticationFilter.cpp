@@ -4,10 +4,10 @@
 
 #include "services/JwtService.h"
 
-using namespace drogon;
-
 namespace filters
 {
+
+    using namespace drogon;
 
     auto AuthenticationFilter::doFilter(const HttpRequestPtr& req, FilterCallback&& fcb,
                                         FilterChainCallback&& fccb) -> void
