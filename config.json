@@ -1,0 +1,38 @@
+{
+  "listeners": [
+    {
+      "address": "0.0.0.0",
+      "port": 8080
+    }
+  ],
+  "app": {
+    "threads_num": 2,
+    "document_root": "./",
+    "log_path": "./log",
+    "log_level": "TRACE"
+  },
+  "plugins": [
+    {
+      "name": "services::JwtService",
+      "dependencies": [],
+      "config": {
+        "secret": "very_secret_change_me",
+        "issuer": "SmartTrails",
+        "expiration": 3600
+      }
+    }
+  ],
+  "db_clients": [
+    {
+      "name": "default",
+      "rdbms": "postgresql",
+      "host": "db",
+      "port": 5432,
+      "dbname": "smarttrails",
+      "user": "postgres",
+      "password": "postgres",
+      "is_fast": false,
+      "number_of_connections": 4
+    }
+  ]
+}
