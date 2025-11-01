@@ -28,8 +28,7 @@ namespace services
                   << ", expiretion=" << expiration_ << "s\n";
     }
 
-    auto JwtService::generateToken(const std::string& userId,
-                                   const std::string& role) -> std::string const
+    auto JwtService::generateToken(int userId, const std::string& role) -> std::string const
     {
         if (role.empty())
             throw std::invalid_argument("Role must not be empty when generating JWT");
@@ -40,7 +39,7 @@ namespace services
 
         auto token = jwt::create()
                          .set_issuer(issuer_)
-                         .set_subject(userId)
+                         .set_subject(std::to_string(userId))
                          .set_issued_at(system_clock::from_time_t(iat))
                          .set_expires_at(system_clock::from_time_t(exp))
                          .set_payload_claim("role", jwt::claim(role))
@@ -68,7 +67,7 @@ namespace services
             }
 
             DecodedJWTData data;
-            data.userId = decoded.get_subject();
+            data.userId = std::stoi(decoded.get_subject());
             data.role   = decoded.get_payload_claim("role").as_string();
 
             return data;

@@ -23,18 +23,18 @@ namespace services
       public:
         [[nodiscard]]
         auto registerUser(const std::string& username, const std::string& email,
-                          const std::string& password) -> std::optional<std::string>;
+                          const std::string& password) -> drogon::Task<std::optional<std::string>>;
 
         [[nodiscard]]
         auto loginUser(const std::string& email,
-                       const std::string& password) -> std::optional<std::string>;
+                       const std::string& password) -> drogon::Task<std::optional<std::string>>;
 
       private:
         auto hashPassword(const std::string& password) -> std::string;
         auto verifyPassword(const std::string& password, const std::string& hash) -> bool;
 
       private:
-        std::shared_ptr<repositories::UserRepository> userRepo_;
+        std::unique_ptr<repositories::UserRepository> userRepo_;
     };
 
 }  // namespace services

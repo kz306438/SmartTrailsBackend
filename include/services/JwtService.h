@@ -9,7 +9,7 @@ namespace services
 
     struct DecodedJWTData
     {
-        std::string userId;
+        int         userId;
         std::string role;
     };
 
@@ -21,8 +21,7 @@ namespace services
         auto initAndStart(const Json::Value& config) -> void override;
         auto shutdown() -> void override {}
 
-        [[nodiscard]] auto generateToken(const std::string& userId,
-                                         const std::string& role) -> std::string const;
+        [[nodiscard]] auto generateToken(int userId, const std::string& role) -> std::string const;
         [[nodiscard]] auto
         verifyAndDecode(const std::string& token) -> std::optional<DecodedJWTData> const;
 

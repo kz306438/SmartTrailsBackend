@@ -1,7 +1,7 @@
 {
     "name": "C++ Dev Container",
     "context": "..",
-    "dockerFile": "../Dockerfile",
+    "dockerFile": "../docker/Dockerfile",
     "workspaceFolder": "/app",
     "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind",
     "customizations": {

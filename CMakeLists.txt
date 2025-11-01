@@ -17,6 +17,8 @@ set(SOURCES
     src/main.cpp
 
     src/controllers/AuthController.cpp
+    src/controllers/UserController.cpp
+
     src/filters/AuthenticationFilter.cpp
     src/filters/AdminFilter.cpp
 
@@ -26,6 +28,7 @@ set(SOURCES
     
     src/services/JwtService.cpp
     src/services/AuthService.cpp
+    src/services/UserService.cpp
 )
 
 # set(HEADERS

@@ -8,8 +8,8 @@ namespace repositories
     UserRepository::UserRepository(DbClientPtr dbClient) : dbClient_(std::move(dbClient)) {}
 
     auto UserRepository::createUser(const std::string& username, const std::string& email,
-                                    const std::string& passwordHash,
-                                    const std::string& role) -> std::optional<models::Users>
+                                    const std::string& passwordHash, const std::string& role)
+        -> drogon::Task<std::optional<models::Users>>
     {
         try
         {
@@ -20,90 +20,110 @@ namespace repositories
             user.setRole(role);
             user.setCreatedAt(trantor::Date::now());
 
-            Mapper<models::Users> usersMapper(dbClient_);
+            CoroMapper<models::Users> usersMapper(dbClient_);
+            co_await usersMapper.insert(user);
 
-            usersMapper.insert(user);
-
-            return user;
+            co_return user;
         }
         catch (const DrogonDbException& e)
         {
             LOG_ERROR << "[REPOSITORY] Error (createUser): " << e.base().what();
-            return std::nullopt;
+            co_return std::nullopt;
         }
     }
 
-    auto UserRepository::getUserById(int userId) -> std::optional<models::Users>
+    auto UserRepository::getUserById(int userId) -> drogon::Task<std::optional<models::Users>>
     {
         try
         {
-            Mapper<models::Users> mp(dbClient_);
-            return mp.findByPrimaryKey(userId);
+            CoroMapper<models::Users> mp(dbClient_);
+            auto                      user = co_await mp.findByPrimaryKey(userId);
+            co_return user;
         }
         catch (const DrogonDbException& e)
         {
-            LOG_WARN << "[REPOSITORY] User not found by ID: " << e.base().what();
-            return std::nullopt;
+            LOG_WARN << "[REPOSITORY] Error (getUserId): " << e.base().what();
+            co_return std::nullopt;
         }
     }
 
-    auto UserRepository::getUserByEmail(const std::string& email) -> std::optional<models::Users>
+    auto UserRepository::getUserByEmail(const std::string& email)
+        -> drogon::Task<std::optional<models::Users>>
     {
         try
         {
-            Mapper<models::Users> mp(dbClient_);
-            return mp.findOne(Criteria(models::Users::Cols::_email, CompareOperator::EQ, email));
+            CoroMapper<models::Users> mp(dbClient_);
+            auto                      user = co_await mp.findOne(
+                Criteria(models::Users::Cols::_email, CompareOperator::EQ, email));
+            co_return user;
         }
         catch (const DrogonDbException& e)
         {
-            LOG_WARN << "[REPOSITORY] User not found by username: " << e.base().what();
-            return std::nullopt;
+            LOG_WARN << "[REPOSITORY] Error (getUserByEmail): " << e.base().what();
+            co_return std::nullopt;
         }
     }
 
-    auto
-    UserRepository::getUserByUsername(const std::string& username) -> std::optional<models::Users>
+    auto UserRepository::getUserByUsername(const std::string& username)
+        -> drogon::Task<std::optional<models::Users>>
     {
         try
         {
-            Mapper<models::Users> mp(dbClient_);
-            return mp.findOne(
+            CoroMapper<models::Users> mp(dbClient_);
+            auto                      user = co_await mp.findOne(
                 Criteria(models::Users::Cols::_username, CompareOperator::EQ, username));
+            co_return user;
         }
         catch (const DrogonDbException& e)
         {
-            LOG_WARN << "[REPOSITORY] User not found by username: " << e.base().what();
-            return std::nullopt;
+            LOG_WARN << "[REPOSITORY] Error (getUserBySurname): " << e.base().what();
+            co_return std::nullopt;
         }
     }
 
-    auto UserRepository::updateUser(const models::Users& user) -> bool
+    auto UserRepository::getAllUsers() -> drogon::Task<std::vector<models::Users>>
     {
         try
         {
-            Mapper<models::Users> mp(dbClient_);
-            mp.update(user);
-            return true;
+            CoroMapper<models::Users> mp(dbClient_);
+
+            auto users = co_await mp.findAll();
+            co_return users;
         }
         catch (const DrogonDbException& e)
         {
-            LOG_ERROR << "[REPOSITORY] Error updating user: " << e.base().what();
-            return false;
+            LOG_ERROR << "[REPOSITORY] Error (getAllUsers): " << e.base().what();
+            co_return {};
         }
     }
 
-    auto UserRepository::deleteUser(int userId) -> bool
+    auto UserRepository::updateUser(const models::Users& user) -> drogon::Task<bool>
     {
         try
         {
-            Mapper<models::Users> mp(dbClient_);
-            mp.deleteByPrimaryKey(userId);
-            return true;
+            CoroMapper<models::Users> mp(dbClient_);
+            co_await mp.update(user);
+            co_return true;
         }
         catch (const DrogonDbException& e)
         {
-            LOG_ERROR << "[REPOSITORY] Error deleting user: " << e.base().what();
-            return false;
+            LOG_ERROR << "[REPOSITORY] Error (updateUser): " << e.base().what();
+            co_return false;
+        }
+    }
+
+    auto UserRepository::deleteUser(int userId) -> drogon::Task<bool>
+    {
+        try
+        {
+            CoroMapper<models::Users> mp(dbClient_);
+            co_await mp.deleteByPrimaryKey(userId);
+            co_return true;
+        }
+        catch (const DrogonDbException& e)
+        {
+            LOG_ERROR << "[REPOSITORY] Error (deleteUser): " << e.base().what();
+            co_return false;
         }
     }
 

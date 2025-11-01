@@ -12,7 +12,7 @@ namespace services
     auto AuthService::initAndStart(const Json::Value& config) -> void
     {
         auto dbClient = drogon::app().getDbClient();
-        userRepo_     = std::make_shared<repositories::UserRepository>(dbClient);
+        userRepo_     = std::make_unique<repositories::UserRepository>(dbClient);
         LOG_INFO << "[AUTH SERVICE] Plugin started";
     }
 
@@ -50,47 +50,49 @@ namespace services
     }
 
     auto AuthService::registerUser(const std::string& username, const std::string& email,
-                                   const std::string& password) -> std::optional<std::string>
+                                   const std::string& password)
+        -> drogon::Task<std::optional<std::string>>
     {
-        if (userRepo_->getUserByEmail(email) || userRepo_->getUserByUsername(username))
+        auto byEmail = co_await userRepo_->getUserByEmail(email);
+        auto byName  = co_await userRepo_->getUserByUsername(username);
+        if (byEmail || byName)
         {
             LOG_WARN << "[AUTH SERVICE] User already exists: " << email;
-            return std::nullopt;
+            co_return std::nullopt;
         }
 
         try
         {
             auto hashed  = hashPassword(password);
-            auto newUser = userRepo_->createUser(username, email, hashed, "user");
+            auto newUser = co_await userRepo_->createUser(username, email, hashed, "user");
             if (!newUser)
-                return std::nullopt;
+                co_return std::nullopt;
 
             auto jwtService = drogon::app().getPlugin<JwtService>();
-            auto token      = jwtService->generateToken(std::to_string(newUser->getValueOfId()),
-                                                        newUser->getValueOfRole());
+            auto token =
+                jwtService->generateToken(newUser->getValueOfId(), newUser->getValueOfRole());
 
-            return token;
+            co_return token;
         }
         catch (const std::exception& e)
         {
             LOG_ERROR << "[AUTH SERVICE] Registration failed: " << e.what();
-            return std::nullopt;
+            co_return std::nullopt;
         }
     }
 
-    auto AuthService::loginUser(const std::string& email,
-                                const std::string& password) -> std::optional<std::string>
+    auto AuthService::loginUser(const std::string& email, const std::string& password)
+        -> drogon::Task<std::optional<std::string>>
     {
-        auto user = userRepo_->getUserByEmail(email);
+        auto user = co_await userRepo_->getUserByEmail(email);
         if (!user)
-            return std::nullopt;
+            co_return std::nullopt;
 
         if (!verifyPassword(password, user->getValueOfPasswordHash()))
-            return std::nullopt;
+            co_return std::nullopt;
 
         auto jwtService = drogon::app().getPlugin<JwtService>();
-        return jwtService->generateToken(std::to_string(user->getValueOfId()),
-                                         user->getValueOfRole());
+        co_return jwtService->generateToken(user->getValueOfId(), user->getValueOfRole());
     }
 
 }  // namespace services

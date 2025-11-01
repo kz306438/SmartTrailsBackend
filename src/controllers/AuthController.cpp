@@ -9,15 +9,14 @@ using namespace drogon;
 namespace controllers
 {
 
-    void AuthController::registerUser(const HttpRequestPtr&                         req,
-                                      std::function<void(const HttpResponsePtr&)>&& callback)
+    auto AuthController::registerUser(HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>
     {
         auto json = req->getJsonObject();
         if (!json)
         {
             auto resp = HttpResponse::newHttpJsonResponse({{"error", "Invalid JSON"}});
             resp->setStatusCode(k400BadRequest);
-            return callback(resp);
+            co_return resp;
         }
 
         auto username = (*json)["username"].asString();
@@ -28,34 +27,33 @@ namespace controllers
         {
             auto resp = HttpResponse::newHttpJsonResponse({{"error", "Missing fields"}});
             resp->setStatusCode(k400BadRequest);
-            return callback(resp);
+            co_return resp;
         }
 
         auto authService = drogon::app().getPlugin<services::AuthService>();
-        auto token       = authService->registerUser(username, email, password);
+        auto token       = co_await authService->registerUser(username, email, password);
         if (!token)
         {
             auto resp = HttpResponse::newHttpJsonResponse({{"error", "Registration failed"}});
             resp->setStatusCode(k400BadRequest);
-            return callback(resp);
+            co_return resp;
         }
 
         Json::Value respJson;
         respJson["token"] = *token;
         auto resp         = HttpResponse::newHttpJsonResponse(respJson);
         resp->setStatusCode(k200OK);
-        callback(resp);
+        co_return resp;
     }
 
-    void AuthController::loginUser(const HttpRequestPtr&                         req,
-                                   std::function<void(const HttpResponsePtr&)>&& callback)
+    auto AuthController::loginUser(HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>
     {
         auto json = req->getJsonObject();
         if (!json)
         {
             auto resp = HttpResponse::newHttpJsonResponse({{"error", "Invalid JSON"}});
             resp->setStatusCode(k400BadRequest);
-            return callback(resp);
+            co_return resp;
         }
 
         auto email    = (*json)["email"].asString();
@@ -65,23 +63,23 @@ namespace controllers
         {
             auto resp = HttpResponse::newHttpJsonResponse({{"error", "Missing fields"}});
             resp->setStatusCode(k400BadRequest);
-            return callback(resp);
+            co_return resp;
         }
 
         auto authService = drogon::app().getPlugin<services::AuthService>();
-        auto token       = authService->loginUser(email, password);
+        auto token       = co_await authService->loginUser(email, password);
         if (!token)
         {
             auto resp = HttpResponse::newHttpJsonResponse({{"error", "Invalid credentials"}});
             resp->setStatusCode(k401Unauthorized);
-            return callback(resp);
+            co_return resp;
         }
 
         Json::Value respJson;
         respJson["token"] = *token;
         auto resp         = HttpResponse::newHttpJsonResponse(respJson);
         resp->setStatusCode(k200OK);
-        callback(resp);
+        co_return resp;
     }
 
 }  // namespace controllers

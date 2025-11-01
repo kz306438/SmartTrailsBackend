@@ -24,13 +24,17 @@
     {
       "name": "services::AuthService",
       "dependencies": []
+    },
+    {
+      "name": "services::UserService",
+      "dependencies": []
     }
   ],
   "db_clients": [
     {
       "name": "default",
       "rdbms": "postgresql",
-      "host": "db",
+      "host": "127.0.0.1",
       "port": 5432,
       "dbname": "smarttrails",
       "user": "postgres",
