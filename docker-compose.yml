@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:17
+    container_name: smarttrails_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: smarttrails
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro  # init.sql will be executed on first run
+    ports:
+      - "5432:5432"
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: smarttrails_app
+    depends_on:
+      - db
+    environment:
+      - DROGON_CONFIG=/app/config.json
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=smarttrails
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - JWT_SECRET=very_secret_change_me
+    volumes:
+      - ./:/app:cached
+    ports:
+      - "8080:8080"
+    command: ["/app/start_app.sh"] 
+
+volumes:
+  db-data:
