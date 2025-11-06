@@ -2,8 +2,9 @@ FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y \
-    build-essential \
+RUN RUN apt-get update && apt-get install -y
+
+RUN build-essential \
     cmake \
     git \
     python3 \
@@ -12,8 +13,9 @@ RUN apt-get update && apt-get install -y \
     wget \
     libssl-dev \
     pkg-config \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+    libpq-dev
+
+RUN rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install --no-cache-dir "conan>=2.0,<3.0" --break-system-packages \
     && ln -s $(which conan) /usr/bin/conan
