@@ -37,8 +37,6 @@ namespace controllers
         auto getOne(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>;
         auto deleteOne(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>;
         auto updateRole(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>;
-
-      private:
     };
 
 }  // namespace controllers

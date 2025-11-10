@@ -22,8 +22,21 @@ set(SOURCES
     src/filters/AuthenticationFilter.cpp
     src/filters/AdminFilter.cpp
 
+    src/models/MapSources.cpp
+    src/models/Poi.cpp
+    src/models/PoiTypes.cpp
+    src/models/RoutePoi.cpp
+    src/models/Routes.cpp
+    src/models/SpatialRefSys.cpp
+    src/models/UserPreferences.cpp
     src/models/Users.cpp
 
+    src/repositories/MapSourceRepository.cpp
+    src/repositories/PoiRepository.cpp
+    src/repositories/PoiTypeRepository.cpp
+    src/repositories/RoutePoiRepository.cpp
+    src/repositories/RouteRepository.cpp
+    src/repositories/UserPreferencesRepository.cpp
     src/repositories/UserRepository.cpp
     
     src/services/JwtService.cpp

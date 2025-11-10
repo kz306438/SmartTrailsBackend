@@ -11,8 +11,6 @@ for i in {1..30}; do
   sleep 1
 done
 
-echo "Building project..."
-./build.sh --clean
-
-
-./build/app
+echo "Starting application..."
+cd /app/build
+./app

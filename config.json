@@ -34,7 +34,7 @@
     {
       "name": "default",
       "rdbms": "postgresql",
-      "host": "127.0.0.1",
+      "host": "db",
       "port": 5432,
       "dbname": "smarttrails",
       "user": "postgres",
