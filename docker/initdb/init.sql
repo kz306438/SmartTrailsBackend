@@ -140,21 +140,3 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_single_active_map
 BEFORE INSERT OR UPDATE ON map_sources
 FOR EACH ROW EXECUTE FUNCTION enforce_single_active_map();
-
--- ============================================================
--- 11. INITIAL DATA (OPTIONAL)
--- ============================================================
-
-INSERT INTO poi_types (name) VALUES
-    ('cafe'),
-    ('restaurant'),
-    ('park'),
-    ('museum'),
-    ('landmark')
-ON CONFLICT DO NOTHING;
-
--- ============================================================
--- END OF INIT SCRIPT
--- ============================================================
-
--- COMMENT ON DATABASE current_database() IS 'SmartTrails database schema with PostGIS support (init.sql)';

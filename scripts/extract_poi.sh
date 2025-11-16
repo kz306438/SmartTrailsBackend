@@ -44,10 +44,5 @@ osmium export "$OUTPUT_DIR/poi_filtered.osm.pbf" -o "$OUTPUT_FILE" --overwrite
 # === Очистка временного файла ===
 rm "$OUTPUT_DIR/poi_filtered.osm.pbf"
 
-# === Информация о результате ===
-COUNT=$(grep -c '"type": "Feature"' "$OUTPUT_FILE" || true)
-SIZE=$(du -h "$OUTPUT_FILE" | cut -f1)
-
-echo "✅ Извлечено POI: $COUNT объектов"
 echo "📦 Размер файла: $SIZE"
 echo "📁 Результат: $OUTPUT_FILE"

@@ -13,25 +13,34 @@ namespace repositories
     {
         try
         {
+            const auto now = trantor::Date::now();
+
+            static const std::string sql = R"(
+            INSERT INTO poi
+                (name, city, type_id, coordinates, description, map_source_id, created_at)
+            VALUES
+                ($1, $2, $3, ST_GeomFromText($4, 4326), $5, $6, $7)
+            RETURNING
+                id, name, city, type_id, ST_AsText(coordinates) AS coordinates,
+                description, map_source_id, created_at
+        )";
+
+            auto result = co_await dbClient_->execSqlCoro(sql, name, city, typeId, coordinatesWkt,
+                                                          description, mapSourceId, now);
+
+            if (result.empty())
+                co_return std::nullopt;
+
+            const auto& row = result[0];
             models::Poi poi;
-            poi.setName(name);
-            poi.setCity(city);
-            poi.setTypeId(typeId);
-            poi.setDescription(description);
-            poi.setMapSourceId(mapSourceId);
-            poi.setCreatedAt(trantor::Date::now());
-
-            // Преобразуем WKT в PostGIS geometry через SQL
-            auto sql    = "SELECT ST_GeomFromText($1, 4326)";
-            auto result = co_await dbClient_->execSqlCoro(sql, coordinatesWkt);
-            if (!result.empty())
-            {
-                auto geom = result[0][0].as<std::string>();
-                poi.setCoordinates(geom);
-            }
-
-            CoroMapper<models::Poi> mapper(dbClient_);
-            co_await mapper.insert(poi);
+            poi.setId(row["id"].as<int>());
+            poi.setName(row["name"].as<std::string>());
+            poi.setCity(row["city"].as<std::string>());
+            poi.setTypeId(row["type_id"].as<int>());
+            poi.setCoordinates(row["coordinates"].as<std::string>());
+            poi.setDescription(row["description"].as<std::string>());
+            poi.setMapSourceId(row["map_source_id"].as<int>());
+            poi.setCreatedAt(now);
 
             co_return poi;
         }

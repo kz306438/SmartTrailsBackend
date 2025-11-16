@@ -17,7 +17,7 @@ namespace repositories
         explicit UserPreferencesRepository(drogon::orm::DbClientPtr dbClient);
 
       public:
-        auto createPreferences(int userId, double distanceKm, const std::vector<int>& poiTypeIds)
+        auto createPreferences(int userId, double distanceKm, const std::string& poiTypeIds)
             -> drogon::Task<std::optional<models::UserPreferences>>;
 
         [[nodiscard]] auto

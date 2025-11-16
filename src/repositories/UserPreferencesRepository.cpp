@@ -11,14 +11,14 @@ namespace repositories
     }
 
     auto UserPreferencesRepository::createPreferences(int userId, double distanceKm,
-                                                      const std::vector<int>& poiTypeIds)
+                                                      const std::string& poiTypeIds)
         -> drogon::Task<std::optional<models::UserPreferences>>
     {
         try
         {
             models::UserPreferences prefs;
             prefs.setUserId(userId);
-            // prefs.setPoiTypeIds(poiTypeIds);  // предполагается, что поле типа std::vector<int>
+            prefs.setPoiTypeIds(poiTypeIds);
             prefs.setUpdatedAt(trantor::Date::now());
 
             CoroMapper<models::UserPreferences> mapper(dbClient_);
