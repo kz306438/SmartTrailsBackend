@@ -46,8 +46,7 @@ namespace utils
                     continue;
 
                 dto::CreatePoiDto dto;
-                dto.lon = coords[0].asDouble();
-                dto.lat = coords[1].asDouble();
+                dto.coordinates = coords[0].asString() + ", " + coords[1].asString();
 
                 const Json::Value& props =
                     (feature.isMember("properties") && feature["properties"].isObject())
@@ -63,7 +62,7 @@ namespace utils
                 };
 
                 assignIfString("name", dto.name);
-                assignIfString("city", dto.city);
+                assignIfString("addr:city", dto.city);
                 assignIfString("description", dto.description);
 
                 std::string keyFound;

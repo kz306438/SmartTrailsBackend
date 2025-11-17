@@ -90,7 +90,7 @@ namespace controllers
         std::vector<int> insertedIds;
         try
         {
-            insertedIds = co_await service->createPois(dtos);
+            insertedIds = co_await service->createPois(std::move(dtos));
         }
         catch (const std::exception& e)
         {

@@ -33,6 +33,8 @@ set(SOURCES
     src/models/UserPreferences.cpp
     src/models/Users.cpp
 
+    src/dto/CreatePoiDto.cpp
+
     src/repositories/MapSourceRepository.cpp
     src/repositories/PoiRepository.cpp
     src/repositories/PoiTypeRepository.cpp

@@ -2,6 +2,7 @@
 #include <drogon/plugins/Plugin.h>
 
 #include <memory>
+#include <mutex>
 #include <vector>
 
 #include "dto/CreatePoiDto.h"
@@ -19,11 +20,15 @@ namespace services
 
       public:
         [[nodiscard]] auto
-        createPois(const std::vector<dto::CreatePoiDto>& dtos) -> drogon::Task<std::vector<int>>;
+        createPois(std::vector<dto::CreatePoiDto>&& dtos) -> drogon::Task<std::vector<int>>;
+
+      private:
+        auto findPoiTypeId(const std::string& typeName) -> int;
 
       private:
         std::unique_ptr<repositories::PoiRepository> repo_;
         std::unordered_map<std::string, int>         typeCache_;
+        std::mutex                                   cacheMutex_;
     };
 
 }  // namespace services

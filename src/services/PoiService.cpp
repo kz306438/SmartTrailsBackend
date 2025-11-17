@@ -1,6 +1,7 @@
 #include "services/PoiService.h"
 
 #include <drogon/drogon.h>
+#include <drogon/orm/Exception.h>
 
 #include <iostream>
 
@@ -19,70 +20,76 @@ namespace services
         LOG_INFO << "[POI SERVICE] Plugin stopped";
     }
 
-    auto PoiService::createPois(const std::vector<dto::CreatePoiDto>& dtos)
-        -> drogon::Task<std::vector<int>>
+    auto
+    PoiService::createPois(std::vector<dto::CreatePoiDto>&& dtos) -> drogon::Task<std::vector<int>>
     {
-        std::vector<int> insertedIds;
-
-        for (auto dto : dtos)
+        for (auto& dto : dtos)
         {
-            try
+            if (!dto.typeName.empty())
             {
-                if (!dto.typeName.empty())
-                {
-                    const std::string tn = dto.typeName;
-                    auto              it = typeCache_.find(tn);
-                    if (it != typeCache_.end())
-                    {
-                        dto.typeId = it->second;
-                    }
-                    else
-                    {
-                        auto dbClient = drogon::app().getDbClient();
-                        auto res      = co_await dbClient->execSqlCoro(
-                            "SELECT id FROM poi_types WHERE name=$1", tn);
-                        if (!res.empty())
-                        {
-                            int tid    = res[0]["id"].as<int>();
-                            dto.typeId = tid;
-                            typeCache_.emplace(tn, tid);
-                        }
-                        else
-                        {
-                            auto ins = co_await dbClient->execSqlCoro(
-                                "INSERT INTO poi_types(name) VALUES($1) RETURNING id", tn);
-                            if (!ins.empty())
-                            {
-                                int tid    = ins[0]["id"].as<int>();
-                                dto.typeId = tid;
-                                typeCache_.emplace(tn, tid);
-                            }
-                        }
-                    }
-                }
-
-                // fields preparing for repository
-                std::string name        = dto.name.value_or("unknown");
-                std::string city        = dto.city.value_or("unknown");
-                std::string description = dto.description.value_or("unknown");
-
-                // create via repository
-                auto optModel = co_await repo_->createPoi(
-                    name, city, dto.typeId, dto.coordinatesWkt(), description, dto.mapSourceId);
-
-                if (optModel && optModel->getId())
-                {
-                    insertedIds.push_back(*optModel->getId());
-                }
-            }
-            catch (const std::exception& e)
-            {
-                LOG_ERROR << "[POI SERVICE] failed to create POI '" << dto.name.value_or("unknown")
-                          << "': " << e.what();
+                dto.typeId = findPoiTypeId(dto.typeName);
             }
         }
+        // create via repository
+        co_return co_await repo_->createManyPoiReturningId(dtos);
+    }
 
-        co_return insertedIds;
+    int PoiService::findPoiTypeId(const std::string& typeName)
+    {
+        if (typeName.empty())
+            return 0;
+
+        try
+        {
+            {
+                std::lock_guard lock(cacheMutex_);
+                auto            it = typeCache_.find(typeName);
+                if (it != typeCache_.end())
+                    return it->second;
+            }
+
+            auto dbClient = drogon::app().getDbClient();
+            if (!dbClient)
+            {
+                LOG_ERROR << "[POI SERVICE] DB client is null";
+                return 0;
+            }
+
+            int typeId = 0;
+
+            auto sel = dbClient->execSqlSync("SELECT id FROM poi_types WHERE name=$1", typeName);
+
+            if (!sel.empty())
+            {
+                typeId = sel[0]["id"].as<int>();
+            }
+            else
+            {
+                auto ins = dbClient->execSqlSync(
+                    "INSERT INTO poi_types(name) VALUES($1) RETURNING id", typeName);
+
+                if (!ins.empty())
+                    typeId = ins[0]["id"].as<int>();
+            }
+
+            if (typeId != 0)
+            {
+                std::lock_guard lock(cacheMutex_);
+
+                auto it = typeCache_.find(typeName);
+                if (it != typeCache_.end())
+                    return it->second;
+
+                typeCache_.emplace(typeName, typeId);
+            }
+
+            return typeId;
+        }
+        catch (const drogon::orm::DrogonDbException& e)
+        {
+            LOG_ERROR << "[POI SERVICE] findPoiTypeIdSync error: " << e.base().what();
+            return 0;
+        }
     }
 
 }  // namespace services

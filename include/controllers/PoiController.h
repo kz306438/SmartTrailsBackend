@@ -10,7 +10,7 @@ namespace controllers
         METHOD_LIST_BEGIN
 
         ADD_METHOD_TO(PoiController::create, "/api/poi", drogon::Post,
-                      "filters::AuthenticationFilter");
+                      "filters::AuthenticationFilter", "filters::AdminFilter");
 
         ADD_METHOD_TO(PoiController::getOne, "/api/poi/{id}", drogon::Get,
                       "filters::AuthenticationFilter");

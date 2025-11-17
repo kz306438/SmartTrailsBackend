@@ -5,6 +5,7 @@
 
 #include <optional>
 
+#include "dto/CreatePoiDto.h"
 #include "models/Poi.h"
 
 namespace repositories
@@ -21,6 +22,8 @@ namespace repositories
                        const std::string& coordinatesWkt, const std::string& description,
                        int mapSourceId) -> drogon::Task<std::optional<models::Poi>>;
 
+        [[nodiscard]] auto createManyPoiReturningId(const std::vector<dto::CreatePoiDto>& pois)
+            -> drogon::Task<std::vector<int>>;
         [[nodiscard]] auto getPoiById(int id) -> drogon::Task<std::optional<models::Poi>>;
         [[nodiscard]] auto getPoiByType(int typeId) -> drogon::Task<std::vector<models::Poi>>;
         [[nodiscard]] auto getAllPoi() -> drogon::Task<std::vector<models::Poi>>;
