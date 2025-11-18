@@ -22,7 +22,7 @@ namespace controllers
 
       public:
         auto create(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>;
-        auto getOne(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>;
+        auto getOne(drogon::HttpRequestPtr req, int id) -> drogon::Task<drogon::HttpResponsePtr>;
         auto getFiltered(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>;
     };
 

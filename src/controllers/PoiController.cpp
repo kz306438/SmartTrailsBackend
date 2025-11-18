@@ -9,6 +9,25 @@
 namespace controllers
 {
 
+    static drogon::HttpResponsePtr
+    makeJsonError(const std::string& message, drogon::HttpStatusCode code = drogon::k400BadRequest)
+    {
+        Json::Value err;
+        err["error"] = message;
+        auto resp    = drogon::HttpResponse::newHttpJsonResponse(err);
+        return resp;
+    }
+
+    static drogon::HttpResponsePtr makeJsonMessage(const std::string&     message,
+                                                   drogon::HttpStatusCode code = drogon::k200OK)
+    {
+        Json::Value out;
+        out["message"] = message;
+        auto resp      = drogon::HttpResponse::newHttpJsonResponse(out);
+        resp->setStatusCode(code);
+        return resp;
+    }
+
     auto PoiController::create(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>
     {
         auto body = req->getJsonObject();
@@ -110,13 +129,56 @@ namespace controllers
         co_return httpResp;
     }
 
-    auto PoiController::getOne(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>
+    auto PoiController::getOne(drogon::HttpRequestPtr req,
+                               int                    id) -> drogon::Task<drogon::HttpResponsePtr>
     {
+        try
+        {
+            auto poiService = drogon::app().getPlugin<services::PoiService>();
+            auto maybePoi   = co_await poiService->getPoiById(id);
+
+            if (!maybePoi)
+                co_return makeJsonError("POI not found", drogon::k404NotFound);
+
+            Json::Value body = maybePoi->toJson();
+            auto        resp = drogon::HttpResponse::newHttpJsonResponse(body);
+            co_return resp;
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR << "[POI CONTROLLER] Error (getOne): " << e.what();
+            co_return makeJsonError("Internal Error", drogon::k500InternalServerError);
+        }
     }
 
     auto
     PoiController::getFiltered(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>
     {
+        try
+        {
+            int type_id = std::stoi(req->getParameter("type_id"));
+
+            auto poiService = drogon::app().getPlugin<services::PoiService>();
+            auto pois       = co_await poiService->getPoiByType(type_id);
+
+            if (pois.empty())
+                co_return makeJsonError("POI with that filter not found", drogon::k404NotFound);
+
+            Json::Value arr(Json::arrayValue);
+
+            for (const auto& poi : pois)
+            {
+                arr.append(poi.toJson());
+            }
+
+            auto resp = drogon::HttpResponse::newHttpJsonResponse(arr);
+            co_return resp;
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR << "[POI CONTROLLER] Error (getFiltered): " << e.what();
+            co_return makeJsonError("Internal Error", drogon::k500InternalServerError);
+        }
     }
 
 }  // namespace controllers

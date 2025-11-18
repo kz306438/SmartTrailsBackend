@@ -22,6 +22,12 @@ namespace services
         [[nodiscard]] auto
         createPois(std::vector<dto::CreatePoiDto>&& dtos) -> drogon::Task<std::vector<int>>;
 
+        [[nodiscard]] auto
+        getPoiById(int id) -> drogon::Task<std::optional<repositories::models::Poi>>;
+
+        [[nodiscard]] auto
+        getPoiByType(int typeId) -> drogon::Task<std::vector<repositories::models::Poi>>;
+
       private:
         auto findPoiTypeId(const std::string& typeName) -> int;
 

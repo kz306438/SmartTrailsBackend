@@ -92,4 +92,15 @@ namespace services
         }
     }
 
+    auto PoiService::getPoiById(int id) -> drogon::Task<std::optional<repositories::models::Poi>>
+    {
+        co_return co_await repo_->getPoiById(id);
+    }
+
+    auto
+    PoiService::getPoiByType(int typeId) -> drogon::Task<std::vector<repositories::models::Poi>>
+    {
+        co_return co_await repo_->getPoiByType(typeId);
+    }
+
 }  // namespace services

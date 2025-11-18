@@ -24,25 +24,6 @@ namespace controllers
         return resp;
     }
 
-    static std::optional<int> extractIdFromPath(const std::string& path)
-    {
-        auto pos = path.find_last_of('/');
-        if (pos == std::string::npos)
-            return std::nullopt;
-        std::string tail = path.substr(pos + 1);
-        if (tail.empty())
-            return std::nullopt;
-        try
-        {
-            int id = std::stoi(tail);
-            return id;
-        }
-        catch (...)
-        {
-            return std::nullopt;
-        }
-    }
-
     auto UserController::getMe(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>
     {
         try
@@ -162,15 +143,11 @@ namespace controllers
         }
     }
 
-    auto UserController::getOne(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>
+    auto UserController::getOne(drogon::HttpRequestPtr req,
+                                int                    id) -> drogon::Task<drogon::HttpResponsePtr>
     {
         try
         {
-            auto maybeId = extractIdFromPath(req->path());
-            if (!maybeId)
-                co_return makeJsonError("Invalid user id in path", drogon::k400BadRequest);
-
-            int  id          = *maybeId;
             auto userService = drogon::app().getPlugin<services::UserService>();
             auto maybeUser   = co_await userService->getUserById(id);
             if (!maybeUser)
@@ -185,16 +162,11 @@ namespace controllers
         }
     }
 
-    auto
-    UserController::deleteOne(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>
+    auto UserController::deleteOne(drogon::HttpRequestPtr req,
+                                   int id) -> drogon::Task<drogon::HttpResponsePtr>
     {
         try
         {
-            auto maybeId = extractIdFromPath(req->path());
-            if (!maybeId)
-                co_return makeJsonError("Invalid user id in path", drogon::k400BadRequest);
-
-            int  id          = *maybeId;
             auto userService = drogon::app().getPlugin<services::UserService>();
             auto ok          = co_await userService->deleteUser(id);
             if (!ok)
@@ -212,27 +184,11 @@ namespace controllers
         }
     }
 
-    auto
-    UserController::updateRole(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>
+    auto UserController::updateRole(drogon::HttpRequestPtr req,
+                                    int id) -> drogon::Task<drogon::HttpResponsePtr>
     {
         try
         {
-            // extract id from path like /api/users/{id}/role
-            // get part before "/role"
-            auto path = req->path();
-            // The last segment is a "role"
-            if (path.size() >= 5 && path.substr(path.size() - 5) == "/role")
-            {
-                // remove trailing /role
-                path = path.substr(0, path.size() - 5);
-            }
-
-            auto maybeId = extractIdFromPath(path);
-            if (!maybeId)
-                co_return makeJsonError("Invalid user id in path", drogon::k400BadRequest);
-
-            int id = *maybeId;
-
             auto json = req->getJsonObject();
             if (!json || !json->isMember("role"))
                 co_return makeJsonError("Missing 'role' in request body", drogon::k400BadRequest);
@@ -241,7 +197,7 @@ namespace controllers
             if (newRole.empty())
                 co_return makeJsonError("Empty role", drogon::k400BadRequest);
 
-            if (newRole != "admin" || newRole != "user")
+            if (newRole != "admin" && newRole != "user")
                 co_return makeJsonError("Invalid role", drogon::k400BadRequest);
 
             auto userService = drogon::app().getPlugin<services::UserService>();
