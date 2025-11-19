@@ -5,28 +5,10 @@
 
 #include "services/PoiService.h"
 #include "utils/GeoJsonUtil.h"
+#include "utils/JsonResponseUtil.h"
 
 namespace controllers
 {
-
-    static drogon::HttpResponsePtr
-    makeJsonError(const std::string& message, drogon::HttpStatusCode code = drogon::k400BadRequest)
-    {
-        Json::Value err;
-        err["error"] = message;
-        auto resp    = drogon::HttpResponse::newHttpJsonResponse(err);
-        return resp;
-    }
-
-    static drogon::HttpResponsePtr makeJsonMessage(const std::string&     message,
-                                                   drogon::HttpStatusCode code = drogon::k200OK)
-    {
-        Json::Value out;
-        out["message"] = message;
-        auto resp      = drogon::HttpResponse::newHttpJsonResponse(out);
-        resp->setStatusCode(code);
-        return resp;
-    }
 
     auto PoiController::create(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>
     {
@@ -138,7 +120,7 @@ namespace controllers
             auto maybePoi   = co_await poiService->getPoiById(id);
 
             if (!maybePoi)
-                co_return makeJsonError("POI not found", drogon::k404NotFound);
+                co_return utils::makeJsonError("POI not found", drogon::k404NotFound);
 
             Json::Value body = maybePoi->toJson();
             auto        resp = drogon::HttpResponse::newHttpJsonResponse(body);
@@ -147,7 +129,7 @@ namespace controllers
         catch (const std::exception& e)
         {
             LOG_ERROR << "[POI CONTROLLER] Error (getOne): " << e.what();
-            co_return makeJsonError("Internal Error", drogon::k500InternalServerError);
+            co_return utils::makeJsonError("Internal Error", drogon::k500InternalServerError);
         }
     }
 
@@ -162,7 +144,8 @@ namespace controllers
             auto pois       = co_await poiService->getPoiByType(type_id);
 
             if (pois.empty())
-                co_return makeJsonError("POI with that filter not found", drogon::k404NotFound);
+                co_return utils::makeJsonError("POI with that filter not found",
+                                               drogon::k404NotFound);
 
             Json::Value arr(Json::arrayValue);
 
@@ -177,7 +160,7 @@ namespace controllers
         catch (const std::exception& e)
         {
             LOG_ERROR << "[POI CONTROLLER] Error (getFiltered): " << e.what();
-            co_return makeJsonError("Internal Error", drogon::k500InternalServerError);
+            co_return utils::makeJsonError("Internal Error", drogon::k500InternalServerError);
         }
     }
 

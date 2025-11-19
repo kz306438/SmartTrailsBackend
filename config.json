@@ -32,6 +32,10 @@
     {
       "name": "services::PoiService",
       "dependencies": []
+    },
+    {
+      "name": "services::PoiTypeService",
+      "dependencies": []
     }
   ],
   "db_clients": [

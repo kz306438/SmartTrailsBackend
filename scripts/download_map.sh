@@ -46,6 +46,5 @@ else
   echo "Map successfuly downloaded into: $DEST_FILE"
 fi
 
-# === Проверяем размер ===
 FILE_SIZE=$(du -h "$DEST_FILE" | cut -f1)
 echo "File size: $FILE_SIZE"

@@ -17,9 +17,12 @@ set(SOURCES
     src/main.cpp
 
     src/controllers/AuthController.cpp
+    src/controllers/MapSourceController.cpp
     src/controllers/PoiController.cpp
+    src/controllers/PoiTypeController.cpp
     src/controllers/RouteController.cpp
     src/controllers/UserController.cpp
+    src/controllers/UserPreferencesController.cpp
 
     src/filters/AuthenticationFilter.cpp
     src/filters/AdminFilter.cpp
@@ -46,9 +49,11 @@ set(SOURCES
     src/services/JwtService.cpp
     src/services/AuthService.cpp
     src/services/PoiService.cpp
+    src/services/PoiTypeService.cpp
     src/services/UserService.cpp
 
     src/utils/GeoJsonUtil.cpp
+    src/utils/JsonResponseUtil.cpp
 )
 
 # set(HEADERS
