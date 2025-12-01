@@ -5,7 +5,7 @@
 #include <mutex>
 #include <vector>
 
-#include "dto/CreatePoiDto.h"
+#include "dto/PoiDto.h"
 #include "repositories/PoiRepository.h"
 
 namespace services
@@ -20,7 +20,7 @@ namespace services
 
       public:
         [[nodiscard]] auto
-        createPois(std::vector<dto::CreatePoiDto>&& dtos) -> drogon::Task<std::vector<int>>;
+        createPois(std::vector<dto::PoiDto>&& dtos) -> drogon::Task<std::vector<int>>;
 
         [[nodiscard]] auto
         getPoiById(int id) -> drogon::Task<std::optional<repositories::models::Poi>>;

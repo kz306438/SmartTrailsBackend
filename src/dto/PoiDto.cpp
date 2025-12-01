@@ -1,11 +1,11 @@
-#include "dto/CreatePoiDto.h"
-
 #include <stdexcept>
+
+#include "dto/PoiDto.h"
 
 namespace dto
 {
 
-    std::string CreatePoiDto::coordinatesWkt() const
+    std::string PoiDto::coordinatesWkt() const
     {
         // coordinates expected like "x,y"
         auto pos = coordinates.find(',');

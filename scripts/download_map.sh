@@ -3,12 +3,12 @@ set -e
 
 # === Settings ===
 BASE_URL="https://download.geofabrik.de"
-MAP_DIR="/data"
+MAP_DIR="/app/maps"
 
 # === Check arguments ===
 if [ -z "$1" ]; then
   echo "Usage: $0 <region-or-url>"
-  echo "Пример:"
+  echo "Example:"
   echo "  $0 europe/netherlands"
   echo "  $0 https://download.geofabrik.de/europe/germany/berlin-latest.osm.pbf"
   exit 1

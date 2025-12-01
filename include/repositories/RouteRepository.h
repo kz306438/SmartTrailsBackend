@@ -11,10 +11,10 @@ namespace repositories
 {
     namespace models = drogon_model::smarttrails;
 
-    class RoutesRepository
+    class RouteRepository
     {
       public:
-        explicit RoutesRepository(drogon::orm::DbClientPtr dbClient);
+        explicit RouteRepository(drogon::orm::DbClientPtr dbClient);
 
       public:
         auto createRoute(int userId, int preferenceId, const std::string& name,

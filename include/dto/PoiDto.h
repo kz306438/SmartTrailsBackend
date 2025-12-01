@@ -5,7 +5,7 @@
 namespace dto
 {
 
-    struct CreatePoiDto
+    struct PoiDto
     {
       public:
         std::optional<std::string> name;

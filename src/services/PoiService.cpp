@@ -20,8 +20,7 @@ namespace services
         LOG_INFO << "[POI SERVICE] Plugin stopped";
     }
 
-    auto
-    PoiService::createPois(std::vector<dto::CreatePoiDto>&& dtos) -> drogon::Task<std::vector<int>>
+    auto PoiService::createPois(std::vector<dto::PoiDto>&& dtos) -> drogon::Task<std::vector<int>>
     {
         for (auto& dto : dtos)
         {

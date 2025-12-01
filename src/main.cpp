@@ -2,5 +2,5 @@
 
 int main()
 {
-    drogon::app().loadConfigFile("../config.json").setLogLevel(trantor::Logger::kTrace).run();
+    drogon::app().loadConfigFile("config.json").setLogLevel(trantor::Logger::kTrace).run();
 }

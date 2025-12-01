@@ -22,7 +22,7 @@ namespace repositories
 
     PoiRepository::PoiRepository(DbClientPtr dbClient) : dbClient_(std::move(dbClient)) {}
 
-    auto PoiRepository::createManyPoiReturningId(const std::vector<dto::CreatePoiDto>& pois)
+    auto PoiRepository::createManyPoiReturningId(const std::vector<dto::PoiDto>& pois)
         -> drogon::Task<std::vector<int>>
     {
         try
@@ -106,6 +106,40 @@ namespace repositories
         {
             LOG_ERROR << "[REPOSITORY] Error (createPoi): " << e.base().what();
             co_return std::nullopt;
+        }
+    }
+
+    auto
+    PoiRepository::getPoisInRadius(int typeId, double latitude, double longitude,
+                                   double radiusMeters) -> drogon::Task<std::vector<models::Poi>>
+    {
+        try
+        {
+            auto sql = "SELECT * FROM poi "
+                       "WHERE type_id = $1 "
+                       "AND ST_DWithin("
+                       "    coordinates::geography, "
+                       "    ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography, "
+                       "    $4"
+                       ");";
+
+            auto result = co_await dbClient_->execSqlCoro(sql, typeId,
+                                                          longitude,  // lon
+                                                          latitude,   // lat
+                                                          radiusMeters);
+
+            std::vector<models::Poi> pois;
+            pois.reserve(result.size());
+
+            for (const auto& row : result)
+                pois.emplace_back(row);
+
+            co_return pois;
+        }
+        catch (const DrogonDbException& e)
+        {
+            LOG_WARN << "[REPOSITORY] Error (getPoisInRadius): " << e.base().what();
+            co_return {};
         }
     }
 

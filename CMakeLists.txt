@@ -36,7 +36,7 @@ set(SOURCES
     src/models/UserPreferences.cpp
     src/models/Users.cpp
 
-    src/dto/CreatePoiDto.cpp
+    src/dto/PoiDto.cpp
 
     src/repositories/MapSourceRepository.cpp
     src/repositories/PoiRepository.cpp
@@ -48,8 +48,11 @@ set(SOURCES
     
     src/services/JwtService.cpp
     src/services/AuthService.cpp
+    src/services/MapSourceService.cpp
     src/services/PoiService.cpp
     src/services/PoiTypeService.cpp
+    src/services/RouteService.cpp
+    src/services/UserPreferencesService.cpp
     src/services/UserService.cpp
 
     src/utils/GeoJsonUtil.cpp

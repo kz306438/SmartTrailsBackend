@@ -3,12 +3,12 @@
 using namespace drogon::orm;
 using namespace repositories;
 
-RoutesRepository::RoutesRepository(DbClientPtr dbClient) : dbClient_(std::move(dbClient)) {}
+RouteRepository::RouteRepository(DbClientPtr dbClient) : dbClient_(std::move(dbClient)) {}
 
-auto RoutesRepository::createRoute(int userId, int preferenceId, const std::string& name,
-                                   const std::string& startPointWkt,
-                                   const std::string& routeLineWkt, double distanceKm,
-                                   int mapSourceId) -> drogon::Task<std::optional<models::Routes>>
+auto RouteRepository::createRoute(int userId, int preferenceId, const std::string& name,
+                                  const std::string& startPointWkt, const std::string& routeLineWkt,
+                                  double distanceKm,
+                                  int    mapSourceId) -> drogon::Task<std::optional<models::Routes>>
 {
     CoroMapper<models::Routes> mapper(dbClient_);
     try
@@ -31,7 +31,6 @@ auto RoutesRepository::createRoute(int userId, int preferenceId, const std::stri
 
         route.setDistanceKm(std::to_string(distanceKm));
         route.setMapSourceId(mapSourceId);
-        route.setCreatedAt(trantor::Date::now());
 
         auto inserted = co_await mapper.insert(route);
         co_return inserted;
@@ -43,7 +42,7 @@ auto RoutesRepository::createRoute(int userId, int preferenceId, const std::stri
     }
 }
 
-auto RoutesRepository::getRouteById(int id) -> drogon::Task<std::optional<models::Routes>>
+auto RouteRepository::getRouteById(int id) -> drogon::Task<std::optional<models::Routes>>
 {
     CoroMapper<models::Routes> mapper(dbClient_);
     try
@@ -58,7 +57,7 @@ auto RoutesRepository::getRouteById(int id) -> drogon::Task<std::optional<models
     }
 }
 
-auto RoutesRepository::getRoutesByUserId(int userId) -> drogon::Task<std::vector<models::Routes>>
+auto RouteRepository::getRoutesByUserId(int userId) -> drogon::Task<std::vector<models::Routes>>
 {
     CoroMapper<models::Routes> mapper(dbClient_);
     try
@@ -73,7 +72,7 @@ auto RoutesRepository::getRoutesByUserId(int userId) -> drogon::Task<std::vector
     }
 }
 
-auto RoutesRepository::getAllRoutes() -> drogon::Task<std::vector<models::Routes>>
+auto RouteRepository::getAllRoutes() -> drogon::Task<std::vector<models::Routes>>
 {
     CoroMapper<models::Routes> mapper(dbClient_);
     try
@@ -88,7 +87,7 @@ auto RoutesRepository::getAllRoutes() -> drogon::Task<std::vector<models::Routes
     }
 }
 
-auto RoutesRepository::updateRoute(const models::Routes& route) -> drogon::Task<bool>
+auto RouteRepository::updateRoute(const models::Routes& route) -> drogon::Task<bool>
 {
     CoroMapper<models::Routes> mapper(dbClient_);
     try
@@ -103,7 +102,7 @@ auto RoutesRepository::updateRoute(const models::Routes& route) -> drogon::Task<
     }
 }
 
-auto RoutesRepository::deleteRoute(int id) -> drogon::Task<bool>
+auto RouteRepository::deleteRoute(int id) -> drogon::Task<bool>
 {
     CoroMapper<models::Routes> mapper(dbClient_);
     try

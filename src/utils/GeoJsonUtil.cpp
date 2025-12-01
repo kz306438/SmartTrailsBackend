@@ -10,9 +10,9 @@
 namespace utils
 {
 
-    auto parseGeoJsonToCreateDtos(const std::string& geojsonStr) -> std::vector<dto::CreatePoiDto>
+    auto parseGeoJsonToCreateDtos(const std::string& geojsonStr) -> std::vector<dto::PoiDto>
     {
-        std::vector<dto::CreatePoiDto> out;
+        std::vector<dto::PoiDto> out;
         if (geojsonStr.empty())
             return out;
 
@@ -45,7 +45,7 @@ namespace utils
                 if (!coords.isArray() || coords.size() < 2)
                     continue;
 
-                dto::CreatePoiDto dto;
+                dto::PoiDto dto;
                 dto.coordinates = coords[0].asString() + ", " + coords[1].asString();
 
                 const Json::Value& props =
