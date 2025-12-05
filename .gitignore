@@ -17,3 +17,5 @@ CMakePresets.json
 
 # Logs
 *.log
+
+/maps/

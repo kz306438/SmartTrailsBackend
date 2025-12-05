@@ -1,0 +1,8 @@
+FROM osrm/osrm-backend:latest
+
+WORKDIR /app
+
+# COPY scripts/watch_map_trigger.sh /app/scripts/watch_map_trigger.sh
+#RUN chmod +x /app/scripts/watch_map_trigger.sh
+
+CMD ["bash", "/app/scripts/watch_map_trigger.sh"]

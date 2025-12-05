@@ -34,11 +34,10 @@ namespace controllers
         auto deleteMe(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>;
 
         auto getAll(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>;
-        auto getOne(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>;
-        auto deleteOne(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>;
-        auto updateRole(drogon::HttpRequestPtr req) -> drogon::Task<drogon::HttpResponsePtr>;
-
-      private:
+        auto getOne(drogon::HttpRequestPtr req, int id) -> drogon::Task<drogon::HttpResponsePtr>;
+        auto deleteOne(drogon::HttpRequestPtr req, int id) -> drogon::Task<drogon::HttpResponsePtr>;
+        auto updateRole(drogon::HttpRequestPtr req,
+                        int                    id) -> drogon::Task<drogon::HttpResponsePtr>;
     };
 
 }  // namespace controllers

@@ -1,170 +1,142 @@
--- ===========================
--- SmartTrails Database Init
--- PostgreSQL 17.x
--- ===========================
+-- ============================================================
+-- SmartTrails Database Initialization Script
+-- PostgreSQL 17 + PostGIS
+-- File: init.sql
+-- ============================================================
 
--- Drop existing tables if they exist (for dev reset)
-DROP TABLE IF EXISTS route_places CASCADE;
-DROP TABLE IF EXISTS route_points CASCADE;
+-- ============================================================
+-- 0. CLEANUP (drop all existing objects in correct order)
+-- ============================================================
+
+DROP TABLE IF EXISTS route_poi CASCADE;
 DROP TABLE IF EXISTS routes CASCADE;
 DROP TABLE IF EXISTS user_preferences CASCADE;
-DROP TABLE IF EXISTS places_of_interest CASCADE;
+DROP TABLE IF EXISTS poi CASCADE;
+DROP TABLE IF EXISTS poi_types CASCADE;
 DROP TABLE IF EXISTS map_sources CASCADE;
-DROP TABLE IF EXISTS system_metrics CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
+DROP TYPE IF EXISTS user_role CASCADE;
 
--- =======================================
--- USERS
--- =======================================
+-- ============================================================
+-- 1. EXTENSIONS
+-- ============================================================
+
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+-- ============================================================
+-- 2. ENUM TYPES
+-- ============================================================
+
+CREATE TYPE user_role AS ENUM ('user', 'admin');
+
+-- ============================================================
+-- 3. USERS
+-- ============================================================
+
 CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    role VARCHAR(10) NOT NULL CHECK (role IN ('user', 'admin')),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id              SERIAL PRIMARY KEY,
+    username        VARCHAR(50) UNIQUE NOT NULL,
+    email           VARCHAR(100) UNIQUE NOT NULL,
+    password_hash   TEXT NOT NULL,
+    role            user_role DEFAULT 'user' NOT NULL,
+    created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_users_username ON users(username);
+-- ============================================================
+-- 4. MAP SOURCES
+-- ============================================================
 
--- -- =======================================
--- -- USER PREFERENCES
--- -- =======================================
--- CREATE TABLE user_preferences (
---     id SERIAL PRIMARY KEY,
---     user_id INT REFERENCES users(id) ON DELETE CASCADE,
---     preferred_terrain VARCHAR(20) CHECK (preferred_terrain IN ('city', 'park', 'forest')),
---     preferred_distance_km NUMERIC(5,2) CHECK (preferred_distance_km > 0),
---     include_places BOOLEAN DEFAULT TRUE,
---     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
--- );
+CREATE TABLE map_sources (
+    id              SERIAL PRIMARY KEY,
+    name            VARCHAR(100) NOT NULL,
+    path            TEXT NOT NULL,
+    is_active       BOOLEAN DEFAULT FALSE,
+    created_at      TIMESTAMPTZ DEFAULT NOW()
+);
 
--- -- =======================================
--- -- ROUTES
--- -- =======================================
--- CREATE TABLE routes (
---     id SERIAL PRIMARY KEY,
---     user_id INT REFERENCES users(id) ON DELETE SET NULL,
---     name VARCHAR(100),
---     description TEXT,
---     start_lat DOUBLE PRECISION NOT NULL,
---     start_lng DOUBLE PRECISION NOT NULL,
---     distance_km NUMERIC(6,2),
---     terrain VARCHAR(20) CHECK (terrain IN ('city', 'park', 'forest')),
---     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
---     is_saved BOOLEAN DEFAULT TRUE
--- );
+-- ============================================================
+-- 5. POI TYPES
+-- ============================================================
 
--- CREATE INDEX idx_routes_user_id ON routes(user_id);
+CREATE TABLE poi_types (
+    id              SERIAL PRIMARY KEY,
+    name            VARCHAR(50) UNIQUE NOT NULL
+);
 
--- -- =======================================
--- -- ROUTE POINTS
--- -- =======================================
--- CREATE TABLE route_points (
---     id SERIAL PRIMARY KEY,
---     route_id INT REFERENCES routes(id) ON DELETE CASCADE,
---     point_order INT NOT NULL,
---     latitude DOUBLE PRECISION NOT NULL,
---     longitude DOUBLE PRECISION NOT NULL
--- );
+-- ============================================================
+-- 6. POI (Places of Interest)
+-- ============================================================
 
--- CREATE INDEX idx_route_points_route_id ON route_points(route_id);
+CREATE TABLE poi (
+    id              SERIAL PRIMARY KEY,
+    name            VARCHAR(100) NOT NULL,
+    city            VARCHAR(100),
+    type_id         INT REFERENCES poi_types(id) ON DELETE SET NULL,
+    coordinates     GEOMETRY(Point, 4326) NOT NULL,
+    description     TEXT,
+    map_source_id   INT REFERENCES map_sources(id) ON DELETE SET NULL,
+    created_at      TIMESTAMPTZ DEFAULT NOW()
+);
 
--- -- =======================================
--- -- PLACES OF INTEREST
--- -- =======================================
--- CREATE TABLE places_of_interest (
---     id SERIAL PRIMARY KEY,
---     name VARCHAR(100) NOT NULL,
---     type VARCHAR(50) CHECK (type IN ('cafe', 'restaurant', 'landmark', 'museum', 'park')),
---     latitude DOUBLE PRECISION NOT NULL,
---     longitude DOUBLE PRECISION NOT NULL,
---     description TEXT
--- );
+-- Spatial index for fast geo queries
+CREATE INDEX idx_poi_geom ON poi USING GIST (coordinates);
 
--- CREATE INDEX idx_places_lat_lng ON places_of_interest(latitude, longitude);
+-- ============================================================
+-- 7. USER PREFERENCES
+-- ============================================================
 
--- -- =======================================
--- -- ROUTE_PLACES (many-to-many)
--- -- =======================================
--- CREATE TABLE route_places (
---     route_id INT REFERENCES routes(id) ON DELETE CASCADE,
---     place_id INT REFERENCES places_of_interest(id) ON DELETE CASCADE,
---     PRIMARY KEY (route_id, place_id)
--- );
+CREATE TABLE user_preferences (
+    id                  SERIAL PRIMARY KEY,
+    user_id             INT REFERENCES users(id) ON DELETE CASCADE,
+    preferred_distance_km NUMERIC(6,2),
+    poi_type_ids        INT[],
+    updated_at          TIMESTAMPTZ DEFAULT NOW()
+);
 
--- -- =======================================
--- -- MAP SOURCES (admin controlled)
--- -- =======================================
--- CREATE TABLE map_sources (
---     id SERIAL PRIMARY KEY,
---     name VARCHAR(100) NOT NULL,
---     url TEXT NOT NULL,
---     is_active BOOLEAN DEFAULT TRUE,
---     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
--- );
+-- ============================================================
+-- 8. ROUTES
+-- ============================================================
 
--- -- =======================================
--- -- SYSTEM METRICS (for admin monitoring)
--- -- =======================================
--- CREATE TABLE system_metrics (
---     id SERIAL PRIMARY KEY,
---     cpu_usage NUMERIC(5,2),
---     memory_usage NUMERIC(5,2),
---     active_users INT,
---     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
--- );
+CREATE TABLE routes (
+    id              SERIAL PRIMARY KEY,
+    user_id         INT REFERENCES users(id) ON DELETE CASCADE,
+    preference_id   INT REFERENCES user_preferences(id) ON DELETE SET NULL,
+    name            VARCHAR(100) NOT NULL,
+    start_point     GEOMETRY(Point, 4326) NOT NULL,
+    route_line      GEOMETRY(LineString, 4326) NOT NULL,
+    distance_km     NUMERIC(7,2),
+    map_source_id   INT REFERENCES map_sources(id) ON DELETE SET NULL,
+    created_at      TIMESTAMPTZ DEFAULT NOW()
+);
 
--- -- =======================================
--- -- SAMPLE DATA
--- -- =======================================
+CREATE INDEX idx_routes_geom ON routes USING GIST (route_line);
+CREATE INDEX idx_routes_start ON routes USING GIST (start_point);
 
--- -- Admin and user accounts (passwords are bcrypt placeholders)
--- INSERT INTO users (username, email, password_hash, role)
--- VALUES
--- ('admin', 'admin@smarttrails.io', '$2a$10$exampleadminhash', 'admin'),
--- ('user1', 'user1@example.com', '$2a$10$exampleuserhash', 'user');
+-- ============================================================
+-- 9. ROUTE <-> POI MAPPING
+-- ============================================================
 
--- -- Default user preferences
--- INSERT INTO user_preferences (user_id, preferred_terrain, preferred_distance_km, include_places)
--- VALUES
--- (2, 'park', 5.00, TRUE);
+CREATE TABLE route_poi (
+    route_id    INT REFERENCES routes(id) ON DELETE CASCADE,
+    poi_id      INT REFERENCES poi(id) ON DELETE CASCADE,
+    PRIMARY KEY (route_id, poi_id)
+);
 
--- -- Default POI
--- INSERT INTO places_of_interest (name, type, latitude, longitude, description)
--- VALUES
--- ('Central Park Cafe', 'cafe', 40.785091, -73.968285, 'Cozy cafe inside the park'),
--- ('City Museum', 'museum', 40.779437, -73.963244, 'Famous historical museum'),
--- ('Old Fountain', 'landmark', 40.782865, -73.965355, 'Iconic city landmark'),
--- ('Riverside Park', 'park', 40.800678, -73.970833, 'Scenic park along the river');
+-- ============================================================
+-- 10. TRIGGERS AND CONSTRAINTS
+-- ============================================================
 
--- -- Example route
--- INSERT INTO routes (user_id, name, description, start_lat, start_lng, distance_km, terrain)
--- VALUES
--- (2, 'Morning Run in the Park', 'Scenic 5km run through the park with coffee stop.', 40.785091, -73.968285, 5.00, 'park');
+-- Only one active map source at a time
+CREATE OR REPLACE FUNCTION enforce_single_active_map()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.is_active THEN
+        UPDATE map_sources SET is_active = FALSE WHERE id <> NEW.id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- -- Route points
--- INSERT INTO route_points (route_id, point_order, latitude, longitude)
--- VALUES
--- (1, 1, 40.785091, -73.968285),
--- (1, 2, 40.782865, -73.965355),
--- (1, 3, 40.779437, -73.963244),
--- (1, 4, 40.780678, -73.970833);
-
--- -- Link POIs to the route
--- INSERT INTO route_places (route_id, place_id)
--- VALUES
--- (1, 1),
--- (1, 2),
--- (1, 3);
-
--- -- Map sources
--- INSERT INTO map_sources (name, url, is_active)
--- VALUES
--- ('OpenStreetMap', 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', TRUE);
-
--- -- System metric sample
--- INSERT INTO system_metrics (cpu_usage, memory_usage, active_users)
--- VALUES
--- (15.2, 42.8, 7);
-
+CREATE TRIGGER trg_single_active_map
+BEFORE INSERT OR UPDATE ON map_sources
+FOR EACH ROW EXECUTE FUNCTION enforce_single_active_map();

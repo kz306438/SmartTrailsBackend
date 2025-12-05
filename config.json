@@ -28,18 +28,37 @@
     {
       "name": "services::UserService",
       "dependencies": []
+    },
+    {
+      "name": "services::PoiService",
+      "dependencies": []
+    },
+    {
+      "name": "services::PoiTypeService",
+      "dependencies": []
+    },
+    {
+      "name": "services::MapSourceService",
+      "dependencies": []
+    },
+    {
+      "name": "services::RouteService",
+      "dependencies": []
+    },
+    {
+      "name": "services::UserPreferencesService",
+      "dependencies": []
     }
   ],
   "db_clients": [
     {
       "name": "default",
-      "rdbms": "postgresql",
-      "host": "127.0.0.1",
+      "rdbms": "postgres",
+      "host": "db",
       "port": 5432,
       "dbname": "smarttrails",
       "user": "postgres",
       "password": "postgres",
-      "is_fast": false,
       "number_of_connections": 4
     }
   ]

@@ -13,9 +13,9 @@ namespace services
     class UserService : public drogon::Plugin<UserService>
     {
       public:
-        void initAndStart(const Json::Value& config) override;
+        auto initAndStart(const Json::Value& config) -> void override;
 
-        void shutdown() override;
+        auto shutdown() -> void override;
 
       public:
         [[nodiscard]]
