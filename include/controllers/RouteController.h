@@ -1,5 +1,8 @@
 #pragma once
 #include <drogon/HttpController.h>
+#include <json/json.h>
+
+#include "dto/RequestRouteDto.h"
 
 namespace controllers
 {
@@ -29,14 +32,24 @@ namespace controllers
       public:
         auto getAll(drogon::HttpRequestPtr req,
                     int                    user_id) -> drogon::Task<drogon::HttpResponsePtr>;
+
         auto getOne(drogon::HttpRequestPtr req, int user_id,
                     int route_id) -> drogon::Task<drogon::HttpResponsePtr>;
+
         auto generate(drogon::HttpRequestPtr req,
                       int                    user_id) -> drogon::Task<drogon::HttpResponsePtr>;
+
         auto updateOne(drogon::HttpRequestPtr req, int user_id,
                        int route_id) -> drogon::Task<drogon::HttpResponsePtr>;
+
         auto deleteOne(drogon::HttpRequestPtr req, int user_id,
                        int route_id) -> drogon::Task<drogon::HttpResponsePtr>;
+
+      private:
+        auto parseAndValidateGenerateRequest(const std::shared_ptr<Json::Value>& json, int user_id)
+            -> std::pair<std::optional<dto::RequestRouteDto>, std::string>;
+
+        auto fetchRouteWithGeoJson(int route_id) -> drogon::Task<std::optional<Json::Value>>;
     };
 
 }  // namespace controllers

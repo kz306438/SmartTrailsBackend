@@ -1551,3 +1551,37 @@ bool Poi::validJsonOfField(size_t index, const std::string& fieldName, const Jso
     }
     return true;
 }
+
+static std::vector<uint8_t> hexToBytes(const std::string& hex)
+{
+    std::vector<uint8_t> bytes;
+    bytes.reserve(hex.size() / 2);
+
+    for (size_t i = 0; i < hex.size(); i += 2)
+        bytes.push_back(std::stoi(hex.substr(i, 2), nullptr, 16));
+
+    return bytes;
+}
+
+static double readDoubleLE(const uint8_t* ptr)
+{
+    double d;
+    std::memcpy(&d, ptr, sizeof(double));
+    return d;
+}
+
+std::pair<double, double> Poi::getLonLat() const
+{
+    auto bytes = hexToBytes(*coordinates_);
+
+    // skip:
+    // 1 byte endian
+    // 4 bytes type
+    // 4 bytes SRID
+    const uint8_t* p = bytes.data() + 9;
+
+    double lon = readDoubleLE(p);
+    double lat = readDoubleLE(p + 8);
+
+    return {lon, lat};
+}

@@ -3,13 +3,25 @@
 #include <drogon/drogon.h>
 #include <drogon/orm/Exception.h>
 
+#include <iomanip>
+#include <random>
+#include <sstream>
+
+#include "services/MapSourceService.h"
+#include "services/UserPreferencesService.h"
+
 namespace services
 {
+    static const std::string OSRM_URL = "http://osrm:5000";
+
     auto RouteService::initAndStart(const Json::Value& config) -> void
     {
         auto dbClient = drogon::app().getDbClient();
         routeRepo_    = std::make_unique<repositories::RouteRepository>(dbClient);
         poiRepo_      = std::make_unique<repositories::PoiRepository>(dbClient);
+        routePoiRepo_ = std::make_unique<repositories::RoutePoiRepository>(dbClient);
+        osrmClient_   = drogon::HttpClient::newHttpClient(OSRM_URL);
+
         LOG_INFO << "[ROUTE SERVICE] Plugin started";
     }
 
@@ -17,6 +29,8 @@ namespace services
     {
         routeRepo_.reset();
         poiRepo_.reset();
+        routePoiRepo_.reset();
+        osrmClient_.reset();
         LOG_INFO << "[ROUTE SERVICE] Plugin stopped";
     }
 
@@ -25,145 +39,248 @@ namespace services
     {
         try
         {
-            // -------------------------
-            // 1. Парсим стартовую точку "lon,lat"
-            // -------------------------
-            double startLon = 0, startLat = 0;
+            // Start point parsing
+            auto startPointOpt = parseStartPoint(dto.start_point);
+            if (!startPointOpt)
             {
-                std::stringstream ss(dto.start_point);
-                char              comma = 0;
-                ss >> startLon >> comma >> startLat;
+                LOG_ERROR << "Invalid start point format: " << dto.start_point;
+                co_return std::nullopt;
             }
+            const auto startPoint = *startPointOpt;  // {lon, lat}
 
-            // -------------------------
-            // 2. Получаем POI и парсим WKT
-            // -------------------------
-            std::vector<std::pair<double, double>> selected;  // lon, lat
-            const double                           radius = dto.distance / 2.0;
+            // POI search
+            const double radiusMeters = dto.distance * 1000 / 2.0;
 
-            for (int typeId : dto.poi_types)
+            // Get models of POI
+            auto selectedPois = co_await findTargetPois(dto.poi_types, startPoint.second,
+                                                        startPoint.first, radiusMeters);
+
+            if (selectedPois.empty())
             {
-                auto pois = co_await poiRepo_->getPoisInRadius(typeId, startLon, startLat, radius);
-                if (pois.empty())
-                {
-                    LOG_WARN << "No POIs for type=" << typeId;
-                    continue;
-                }
-
-                const auto& poi = pois.front();
-                std::string wkt = poi.getValueOfCoordinates();
-
-                // --- Парсинг POINT(lon lat) ---
-                double lon = 0, lat = 0;
-                if (wkt.rfind("POINT", 0) == 0)
-                {
-                    auto L = wkt.find('(');
-                    auto R = wkt.find(')');
-                    if (L != std::string::npos && R != std::string::npos && R > L)
-                    {
-                        std::string       inside = wkt.substr(L + 1, R - L - 1);
-                        std::stringstream ss(inside);
-                        ss >> lon >> lat;
-                    }
-                }
-
-                selected.emplace_back(lon, lat);
-            }
-
-            if (selected.empty())
-            {
-                LOG_WARN << "No POIs selected";
+                LOG_WARN << "No suitable POIs found for route generation.";
                 co_return std::nullopt;
             }
 
-            // -------------------------
-            // 3. Формируем последовательность точек маршрута
-            // -------------------------
-            std::vector<std::pair<double, double>> pathPoints;
-            pathPoints.emplace_back(startLon, startLat);
-            for (auto& p : selected)
-                pathPoints.push_back(p);
-            pathPoints.emplace_back(startLon, startLat);  // возврат
+            // Assembling sequence of points (Start -> POI... -> Start)
+            auto keyPoints = buildPathPoints(startPoint, selectedPois);
 
-            // -------------------------
-            // 4. Запрашиваем OSRM (частями)
-            // -------------------------
-            auto http = drogon::HttpClient::newHttpClient("http://127.0.0.1:5000");
-            std::vector<std::pair<double, double>> routeCoords;
+            // Request geometry of route by OSRM
+            auto routeGeometry = co_await fetchOsrmPathGeometry(keyPoints);
 
-            for (size_t i = 0; i + 1 < pathPoints.size(); ++i)
+            if (routeGeometry.empty())
             {
-                auto [lon1, lat1] = pathPoints[i];
-                auto [lon2, lat2] = pathPoints[i + 1];
-
-                std::ostringstream p;
-                p << "/route/v1/driving/" << lon1 << "," << lat1 << ";" << lon2 << "," << lat2;
-
-                auto req = drogon::HttpRequest::newHttpRequest();
-                req->setPath(p.str());
-                req->setParameter("geometries", "geojson");
-                req->setParameter("overview", "full");
-
-                auto resp = co_await http->sendRequestCoro(req);
-                if (!resp || resp->getStatusCode() != 200)
-                {
-                    LOG_ERROR << "OSRM request failed";
-                    co_return std::nullopt;
-                }
-
-                auto        json   = resp->getJsonObject();
-                const auto& coords = (*json)["routes"][0]["geometry"]["coordinates"];
-
-                for (const auto& c : coords)
-                    routeCoords.emplace_back(c[0].asDouble(), c[1].asDouble());
-            }
-
-            if (routeCoords.empty())
-            {
-                LOG_ERROR << "No OSRM route points";
+                LOG_ERROR << "Failed to construct OSRM geometry.";
                 co_return std::nullopt;
             }
 
-            // -------------------------
-            // 5. Формируем итоговый LineString в WKT
-            // -------------------------
-            std::ostringstream wktLine;
-            wktLine << "LINESTRING(";
-            for (size_t i = 0; i < routeCoords.size(); ++i)
-            {
-                auto [lon, lat] = routeCoords[i];
-                wktLine << lon << " " << lat;
-                if (i + 1 < routeCoords.size())
-                    wktLine << ",";
-            }
-            wktLine << ")";
+            std::string wktLine = convertToWktLineString(routeGeometry);
 
-            // -------------------------
-            // 6. Формируем стартовую точку для таблицы (Point)
-            // -------------------------
-            std::ostringstream wktPoint;
-            wktPoint << "POINT(" << startLon << " " << startLat << ")";
-
-            // -------------------------
-            // 7. Сохраняем в БД
-            // -------------------------
-            const int userId       = dto.user_id;
-            const int preferenceId = 0;  // если у вас нет в dto — ставим NULL
-            const int mapSourceId = 1;  // при необходимости подставьте реальный id
-
-            double totalDistanceKm = dto.distance;  // пока используем исходную
-
-            auto saved = co_await routeRepo_->createRoute(userId, preferenceId, dto.name,
-                                                          wktPoint.str(),  // start_point
-                                                          wktLine.str(),   // route_line
-                                                          totalDistanceKm, mapSourceId);
-
-            co_return saved;
+            co_return co_await saveRouteToDb(dto, startPoint, wktLine, selectedPois);
         }
         catch (const std::exception& e)
         {
-            LOG_ERROR << "RouteService::createRoute error: " << e.what();
+            LOG_ERROR << "RouteService::createRoute unhandled exception: " << e.what();
             co_return std::nullopt;
         }
     }
+
+    auto RouteService::parseStartPoint(const std::string& pointStr) const -> std::optional<GeoPoint>
+    {
+        double lat   = 0.0;
+        double lon   = 0.0;
+        char   comma = 0;
+
+        std::stringstream ss(pointStr);
+        if (ss >> lat >> comma >> lon)
+        {
+            return std::make_pair(lon, lat);
+        }
+        return std::nullopt;
+    }
+
+    auto RouteService::findTargetPois(const std::vector<int>& types, double lat, double lon,
+                                      double radiusMeters)
+        -> drogon::Task<std::vector<repositories::models::Poi>>
+    {
+        std::vector<repositories::models::Poi> result;
+        result.reserve(types.size());
+
+        std::random_device rd;
+        std::mt19937       gen(rd());
+
+        for (int typeId : types)
+        {
+            auto pois = co_await poiRepo_->getPoisInRadius(typeId, lat, lon, radiusMeters);
+
+            if (pois.empty())
+            {
+                LOG_WARN << "No POIs found for type=" << typeId << " in radius=" << radiusMeters;
+                continue;
+            }
+            std::uniform_int_distribution<size_t> dis(0, pois.size() - 1);
+
+            size_t randomIndex = dis(gen);
+            result.push_back(pois[randomIndex]);
+        }
+
+        co_return result;
+    }
+
+    auto RouteService::buildPathPoints(GeoPoint                                      start,
+                                       const std::vector<repositories::models::Poi>& pois) const
+        -> std::vector<GeoPoint>
+    {
+        std::vector<GeoPoint> path;
+        path.reserve(pois.size() + 2);
+
+        path.push_back(start);
+
+        // Extract coordinates from model
+        for (const auto& poi : pois)
+        {
+            auto [lon, lat] = poi.getLonLat();
+            path.emplace_back(lon, lat);
+        }
+
+        path.push_back(start);
+
+        return path;
+    }
+
+    auto RouteService::fetchOsrmPathGeometry(const std::vector<GeoPoint>& pathPoints)
+        -> drogon::Task<std::vector<GeoPoint>>
+    {
+        std::vector<GeoPoint> fullRouteCoords;
+
+        for (size_t i = 0; i + 1 < pathPoints.size(); ++i)
+        {
+            auto [lon1, lat1] = pathPoints[i];
+            auto [lon2, lat2] = pathPoints[i + 1];
+
+            std::ostringstream pathStream;
+            pathStream << "/route/v1/walking/" << lon1 << "," << lat1 << ";" << lon2 << "," << lat2;
+
+            auto req = drogon::HttpRequest::newHttpRequest();
+            req->setPath(pathStream.str());
+            req->setParameter("geometries", "geojson");
+            req->setParameter("overview", "full");
+
+            auto resp = co_await osrmClient_->sendRequestCoro(req);
+
+            if (!resp || resp->getStatusCode() != 200)
+            {
+                LOG_ERROR << "OSRM request failed";
+                co_return std::vector<GeoPoint>{};
+            }
+
+            try
+            {
+                auto json = resp->getJsonObject();
+                if (!json || !json->isMember("routes") || (*json)["routes"].empty())
+                    co_return std::vector<GeoPoint>{};
+
+                const auto& coords = (*json)["routes"][0]["geometry"]["coordinates"];
+                for (const auto& c : coords)
+                    fullRouteCoords.emplace_back(c[0].asDouble(), c[1].asDouble());
+            }
+            catch (const std::exception& e)
+            {
+                LOG_ERROR << "Error parsing OSRM JSON: " << e.what();
+                co_return std::vector<GeoPoint>{};
+            }
+        }
+        co_return fullRouteCoords;
+    }
+
+    auto
+    RouteService::convertToWktLineString(const std::vector<GeoPoint>& coords) const -> std::string
+    {
+        std::ostringstream wkt;
+        wkt << "LINESTRING(";
+        for (size_t i = 0; i < coords.size(); ++i)
+        {
+            wkt << std::fixed << std::setprecision(6) << coords[i].first << " " << coords[i].second;
+            if (i + 1 < coords.size())
+                wkt << ",";
+        }
+        wkt << ")";
+        return wkt.str();
+    }
+
+    auto RouteService::convertToWktPoint(GeoPoint point) const -> std::string
+    {
+        std::ostringstream wkt;
+        wkt << std::fixed << std::setprecision(6) << "POINT(" << point.second << " " << point.first
+            << ")";
+        return wkt.str();
+    }
+
+    auto RouteService::saveRouteToDb(
+        const dto::RequestRouteDto& dto, GeoPoint startPoint, const std::string& wktLineString,
+        const std::vector<repositories::models::Poi>& selectedPois)  // <--- Аргумент
+        -> drogon::Task<std::optional<repositories::models::Routes>>
+    {
+        auto userPrefService  = drogon::app().getPlugin<UserPreferencesService>();
+        auto mapSourceService = drogon::app().getPlugin<MapSourceService>();
+
+        if (!userPrefService || !mapSourceService)
+        {
+            LOG_ERROR << "Dependent services not found";
+            co_return std::nullopt;
+        }
+
+        auto prefOpt =
+            co_await userPrefService->createPreferecnes(dto.user_id, dto.distance, dto.poi_types);
+        if (!prefOpt)
+        {
+            LOG_ERROR << "Failed to create user preferences";
+            co_return std::nullopt;
+        }
+
+        auto mapSrcOpt = co_await mapSourceService->getActiveMapSource();
+        if (!mapSrcOpt)
+        {
+            LOG_ERROR << "Failed to get active map source";
+            co_return std::nullopt;
+        }
+
+        const int userId       = dto.user_id;
+        const int preferenceId = *prefOpt.value().getId();
+        const int mapSourceId  = *mapSrcOpt.value().getId();
+
+        std::string wktPointStr     = convertToWktPoint(startPoint);
+        double      totalDistanceKm = dto.distance;
+
+        // Save route
+        auto savedRoute =
+            co_await routeRepo_->createRoute(userId, preferenceId, dto.name, wktPointStr,
+                                             wktLineString, totalDistanceKm, mapSourceId);
+
+        if (!savedRoute)
+        {
+            LOG_ERROR << "Failed to save route to DB";
+            co_return std::nullopt;
+        }
+
+        // Save relations into route_poi
+        const int routeId = *savedRoute->getId();
+
+        for (const auto& poi : selectedPois)
+        {
+            if (poi.getId())
+            {
+                bool added = co_await routePoiRepo_->addPoiToRoute(routeId, *poi.getId());
+                if (!added)
+                {
+                    LOG_WARN << "Failed to link POI id=" << *poi.getId()
+                             << " to route id=" << routeId;
+                }
+            }
+        }
+
+        LOG_INFO << "Route created successfully for user " << userId << " with "
+                 << selectedPois.size() << " POIs";
+        co_return savedRoute;
+    }
+
 }  // namespace services

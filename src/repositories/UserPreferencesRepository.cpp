@@ -11,24 +11,48 @@ namespace repositories
     }
 
     auto UserPreferencesRepository::createPreferences(int userId, double distanceKm,
-                                                      const std::string& poiTypeIds)
+                                                      const std::vector<int>& poiTypeIds)
         -> drogon::Task<std::optional<models::UserPreferences>>
     {
         try
         {
-            models::UserPreferences prefs;
-            prefs.setUserId(userId);
-            prefs.setPoiTypeIds(poiTypeIds);
-            prefs.setUpdatedAt(trantor::Date::now());
+            std::string poiArray = "{";
+            for (size_t i = 0; i < poiTypeIds.size(); ++i)
+            {
+                poiArray += std::to_string(poiTypeIds[i]);
+                if (i + 1 < poiTypeIds.size())
+                    poiArray += ",";
+            }
+            poiArray += "}";
 
-            CoroMapper<models::UserPreferences> mapper(dbClient_);
-            co_await mapper.insert(prefs);
+            const char* sql =
+                "INSERT INTO user_preferences (user_id, preferred_distance_km, poi_type_ids, "
+                "updated_at) "
+                "VALUES ($1, $2, $3, NOW()) "
+                "RETURNING id, user_id, preferred_distance_km, poi_type_ids, updated_at";
+
+            auto result = co_await dbClient_->execSqlCoro(sql, userId, distanceKm, poiArray);
+
+            if (result.empty())
+            {
+                LOG_ERROR << "[REPOSITORY] createPreferences: empty RETURNING";
+                co_return std::nullopt;
+            }
+
+            const auto&             row = result[0];
+            models::UserPreferences prefs;
+
+            prefs.setId(row["id"].as<int>());
+            prefs.setUserId(row["user_id"].as<int>());
+            prefs.setPreferredDistanceKm(row["preferred_distance_km"].as<std::string>());
+
+            prefs.setPoiTypeIds(row["poi_type_ids"].as<std::string>());
 
             co_return prefs;
         }
         catch (const DrogonDbException& e)
         {
-            LOG_ERROR << "[REPOSITORY] Error (createPreferences): " << e.base().what();
+            LOG_ERROR << "[REPOSITORY] Error (createPreferences SQL): " << e.base().what();
             co_return std::nullopt;
         }
     }

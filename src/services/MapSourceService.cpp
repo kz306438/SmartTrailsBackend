@@ -64,7 +64,7 @@ namespace services
                 co_return false;
             }
 
-            const std::string triggerFile = "maps/update.trigger";
+            const std::string triggerFile = "/app/maps/update.trigger";
 
             try
             {
@@ -91,6 +91,12 @@ namespace services
     auto MapSourceService::deleteMapSource(int id) -> drogon::Task<bool>
     {
         co_return co_await repo_->deleteMapSource(id);
+    }
+
+    auto MapSourceService::getActiveMapSource()
+        -> drogon::Task<std::optional<repositories::models::MapSources>>
+    {
+        co_return co_await repo_->getActiveMapSource();
     }
 
 }  // namespace services

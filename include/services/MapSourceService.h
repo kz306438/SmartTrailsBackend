@@ -24,6 +24,9 @@ namespace services
         [[nodiscard]] auto
         getAllMapSources() -> drogon::Task<std::vector<repositories::models::MapSources>>;
 
+        [[nodiscard]] auto
+        getActiveMapSource() -> drogon::Task<std::optional<repositories::models::MapSources>>;
+
         auto updateMapSource(const repositories::models::MapSources& mapSource,
                              const std::string&                      path) -> drogon::Task<bool>;
         auto deleteMapSource(int id) -> drogon::Task<bool>;

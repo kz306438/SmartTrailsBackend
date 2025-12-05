@@ -4,51 +4,51 @@ set -e
 TRIGGER_FILE="/app/maps/update.trigger"
 CURRENT_PID=0
 
-echo "👀 OSRM Watcher (MLD) запущен. Жду триггер: $TRIGGER_FILE"
+echo "Watcher (MLD) started. Wait for trigger: $TRIGGER_FILE"
 
 while true; do
     if [ -f "$TRIGGER_FILE" ]; then
-        # Читаем полный путь к osm.pbf
+        # Read full path to osm.pbf
         PBF_PATH=$(cat "$TRIGGER_FILE" | tr -d '[:space:]')
 
         if [ -z "$PBF_PATH" ]; then
-            echo "❌ Триггер пустой, нужно указать полный путь к .osm.pbf"
+            echo "Trigger is empty, you need add full path .osm.pbf"
             rm -f "$TRIGGER_FILE"
             sleep 5
             continue
         fi
 
         if [ ! -f "$PBF_PATH" ]; then
-            echo "❌ Файл карты не найден: $PBF_PATH"
+            echo "Map file not found: $PBF_PATH"
             rm -f "$TRIGGER_FILE"
             sleep 5
             continue
         fi
 
-        # Генерируем имя .osrm рядом с osm.pbf
+        # Generate name .osrm by osm.pbf
         OSRM_FILE="${PBF_PATH%.osm.pbf}.osrm"
 
-        echo "⚡ Триггер найден! Обрабатываю карту: $PBF_PATH"
+        echo "⚡ Trigger found! Procces the map: $PBF_PATH"
 
-        # Останавливаем текущий osrm-routed если запущен
+        # Stop current osrm-routed if is active 
         if [ $CURRENT_PID -ne 0 ]; then
-            echo "🛑 Останавливаем osrm-routed (PID=$CURRENT_PID)"
+            echo "Stop osrm-routed (PID=$CURRENT_PID)"
             kill $CURRENT_PID || true
             wait $CURRENT_PID || true
         fi
 
-        # Препроцессинг карты для MLD
-        echo "🛠 Препроцессинг карты для MLD..."
-        osrm-extract -p /opt/car.lua "$PBF_PATH"
+        # Map proccesing for MLD
+        echo "Map preproccesing for MLD..."
+        osrm-extract -p /opt/foot.lua "$PBF_PATH"
         osrm-partition "$OSRM_FILE"
         osrm-customize "$OSRM_FILE"
-        echo "✅ Препроцессинг завершён: $OSRM_FILE"
+        echo "Preproccesing completed: $OSRM_FILE"
 
-        # Удаляем триггер
+        # Delete trigger
         rm -f "$TRIGGER_FILE"
 
-        # Запускаем osrm-routed с MLD
-        echo "▶ Запускаем osrm-routed (MLD)"
+        # Start osrm-routed с MLD
+        echo "▶ Start osrm-routed (MLD)"
         osrm-routed --algorithm mld "$OSRM_FILE" &
         CURRENT_PID=$!
     fi

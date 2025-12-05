@@ -18,7 +18,7 @@ auto RouteRepository::createRoute(int userId, int preferenceId, const std::strin
         route.setPreferenceId(preferenceId);
         route.setName(name);
 
-        // Преобразуем WKT в PostGIS geometry через SQL
+        // Convert WKT into PostGIS geometry via SQL
         auto startRes =
             co_await dbClient_->execSqlCoro("SELECT ST_GeomFromText($1, 4326)", startPointWkt);
         if (!startRes.empty())
