@@ -64,7 +64,7 @@ namespace services
         try
         {
             auto hashed  = hashPassword(password);
-            auto newUser = co_await userRepo_->createUser(username, email, hashed, "role");
+            auto newUser = co_await userRepo_->createUser(username, email, hashed, "user");
             if (!newUser)
                 co_return std::nullopt;
 

@@ -52,6 +52,8 @@ namespace services
             const double radiusMeters = dto.distance * 1000 / 2.0;
 
             // Get models of POI
+            // findTargetPois принимает (types, lat, lon, radius)
+            // startPoint.second = lat, startPoint.first = lon
             auto selectedPois = co_await findTargetPois(dto.poi_types, startPoint.second,
                                                         startPoint.first, radiusMeters);
 
@@ -91,7 +93,7 @@ namespace services
         char   comma = 0;
 
         std::stringstream ss(pointStr);
-        if (ss >> lat >> comma >> lon)
+        if (ss >> lon >> comma >> lat)
         {
             return std::make_pair(lon, lat);
         }
@@ -179,6 +181,7 @@ namespace services
                 if (!json || !json->isMember("routes") || (*json)["routes"].empty())
                     co_return std::vector<GeoPoint>{};
 
+                // GeoJSON coordinates массив: [lon, lat]
                 const auto& coords = (*json)["routes"][0]["geometry"]["coordinates"];
                 for (const auto& c : coords)
                     fullRouteCoords.emplace_back(c[0].asDouble(), c[1].asDouble());
@@ -199,6 +202,7 @@ namespace services
         wkt << "LINESTRING(";
         for (size_t i = 0; i < coords.size(); ++i)
         {
+            // PostGIS WKT формат: "lon lat" (X Y)
             wkt << std::fixed << std::setprecision(6) << coords[i].first << " " << coords[i].second;
             if (i + 1 < coords.size())
                 wkt << ",";
@@ -210,14 +214,14 @@ namespace services
     auto RouteService::convertToWktPoint(GeoPoint point) const -> std::string
     {
         std::ostringstream wkt;
-        wkt << std::fixed << std::setprecision(6) << "POINT(" << point.second << " " << point.first
+        wkt << std::fixed << std::setprecision(6) << "POINT(" << point.first << " " << point.second
             << ")";
         return wkt.str();
     }
 
-    auto RouteService::saveRouteToDb(
-        const dto::RequestRouteDto& dto, GeoPoint startPoint, const std::string& wktLineString,
-        const std::vector<repositories::models::Poi>& selectedPois)  // <--- Аргумент
+    auto RouteService::saveRouteToDb(const dto::RequestRouteDto& dto, GeoPoint startPoint,
+                                     const std::string&                            wktLineString,
+                                     const std::vector<repositories::models::Poi>& selectedPois)
         -> drogon::Task<std::optional<repositories::models::Routes>>
     {
         auto userPrefService  = drogon::app().getPlugin<UserPreferencesService>();
