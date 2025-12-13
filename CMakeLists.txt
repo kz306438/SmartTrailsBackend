@@ -23,6 +23,7 @@ set(SOURCES
     src/controllers/RouteController.cpp
     src/controllers/UserController.cpp
     src/controllers/UserPreferencesController.cpp
+    src/controllers/SystemController.cpp
 
     src/filters/AuthenticationFilter.cpp
     src/filters/AdminFilter.cpp
@@ -54,6 +55,7 @@ set(SOURCES
     src/services/RouteService.cpp
     src/services/UserPreferencesService.cpp
     src/services/UserService.cpp
+    src/services/SystemService.cpp
 
     src/utils/GeoJsonUtil.cpp
     src/utils/JsonResponseUtil.cpp

@@ -48,6 +48,10 @@
     {
       "name": "services::UserPreferencesService",
       "dependencies": []
+    },
+    {
+      "name": "services::SystemService",
+      "dependencies": []
     }
   ],
   "db_clients": [
