@@ -51,48 +51,62 @@ namespace services
 
     auto AuthService::registerUser(const std::string& username, const std::string& email,
                                    const std::string& password)
-        -> drogon::Task<std::optional<std::string>>
+        -> drogon::Task<utils::ServiceResult<std::string>>
     {
-        auto byEmail = co_await userRepo_->getUserByEmail(email);
-        auto byName  = co_await userRepo_->getUserByUsername(username);
-        if (byEmail || byName)
-        {
-            LOG_WARN << "[AUTH SERVICE] User already exists: " << email;
-            co_return std::nullopt;
-        }
-
         try
         {
+            auto byEmail = co_await userRepo_->getUserByEmail(email);
+            if (byEmail)
+            {
+                co_return utils::ServiceResult<std::string>::Conflict("Email already registered",
+                                                                      "email");
+            }
+
             auto hashed  = hashPassword(password);
             auto newUser = co_await userRepo_->createUser(username, email, hashed, "user");
+
             if (!newUser)
-                co_return std::nullopt;
+            {
+                co_return utils::ServiceResult<std::string>::Internal("Failed to save user to DB");
+            }
 
             auto jwtService = drogon::app().getPlugin<JwtService>();
             auto token =
                 jwtService->generateToken(newUser->getValueOfId(), newUser->getValueOfRole());
 
-            co_return token;
+            co_return utils::ServiceResult<std::string>::Ok(token);
         }
         catch (const std::exception& e)
         {
-            LOG_ERROR << "[AUTH SERVICE] Registration failed: " << e.what();
-            co_return std::nullopt;
+            LOG_ERROR << "[AUTH SERVICE] Exception: " << e.what();
+            co_return utils::ServiceResult<std::string>::Internal(e.what());
         }
     }
 
     auto AuthService::loginUser(const std::string& email, const std::string& password)
-        -> drogon::Task<std::optional<std::string>>
+        -> drogon::Task<utils::ServiceResult<std::string>>
     {
-        auto user = co_await userRepo_->getUserByEmail(email);
-        if (!user)
-            co_return std::nullopt;
+        try
+        {
+            auto user = co_await userRepo_->getUserByEmail(email);
+            if (!user)
+            {
+                co_return utils::ServiceResult<std::string>::Unauthorized("Invalid credentials");
+            }
 
-        if (!verifyPassword(password, user->getValueOfPasswordHash()))
-            co_return std::nullopt;
+            if (!verifyPassword(password, user->getValueOfPasswordHash()))
+            {
+                co_return utils::ServiceResult<std::string>::Unauthorized("Invalid credentials");
+            }
 
-        auto jwtService = drogon::app().getPlugin<JwtService>();
-        co_return jwtService->generateToken(user->getValueOfId(), user->getValueOfRole());
+            auto jwtService = drogon::app().getPlugin<JwtService>();
+            auto token = jwtService->generateToken(user->getValueOfId(), user->getValueOfRole());
+
+            co_return utils::ServiceResult<std::string>::Ok(token);
+        }
+        catch (const std::exception& e)
+        {
+            co_return utils::ServiceResult<std::string>::Internal(e.what());
+        }
     }
-
 }  // namespace services

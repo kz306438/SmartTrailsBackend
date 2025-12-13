@@ -22,4 +22,40 @@ namespace utils
         return resp;
     }
 
+    drogon::HttpResponsePtr fromServiceError(ServiceErrorType type, const std::string& msg,
+                                             const std::string& field)
+    {
+        Json::Value json;
+        json["error"] = msg;
+        if (!field.empty())
+        {
+            json["field"] = field;
+        }
+
+        auto resp = drogon::HttpResponse::newHttpJsonResponse(json);
+
+        switch (type)
+        {
+            case ServiceErrorType::BadRequest:
+                resp->setStatusCode(drogon::k400BadRequest);
+                break;
+            case ServiceErrorType::NotFound:
+                resp->setStatusCode(drogon::k404NotFound);
+                break;
+            case ServiceErrorType::Conflict:
+                resp->setStatusCode(drogon::k409Conflict);
+                break;
+            case ServiceErrorType::Unauthorized:
+                resp->setStatusCode(drogon::k401Unauthorized);
+                break;
+            case ServiceErrorType::Forbidden:
+                resp->setStatusCode(drogon::k403Forbidden);
+                break;
+            default:
+                resp->setStatusCode(drogon::k500InternalServerError);
+                break;
+        }
+        return resp;
+    }
+
 }  // namespace utils

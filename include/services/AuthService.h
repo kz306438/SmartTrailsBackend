@@ -9,6 +9,7 @@
 #include "models/Users.h"
 #include "repositories/UserRepository.h"
 #include "services/JwtService.h"
+#include "utils/ServiceResult.h"
 
 namespace services
 {
@@ -23,11 +24,12 @@ namespace services
       public:
         [[nodiscard]]
         auto registerUser(const std::string& username, const std::string& email,
-                          const std::string& password) -> drogon::Task<std::optional<std::string>>;
+                          const std::string& password)
+            -> drogon::Task<utils::ServiceResult<std::string>>;
 
         [[nodiscard]]
-        auto loginUser(const std::string& email,
-                       const std::string& password) -> drogon::Task<std::optional<std::string>>;
+        auto loginUser(const std::string& email, const std::string& password)
+            -> drogon::Task<utils::ServiceResult<std::string>>;
 
       private:
         auto hashPassword(const std::string& password) -> std::string;
